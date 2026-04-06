@@ -5,6 +5,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
+import UploadModal from '../components/UploadModal';
 import type { Match } from '@bandeja/shared';
 
 const BADGE: Record<string, string> = {
@@ -112,6 +113,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [matches, setMatches] = useState<(Match & { id: string })[]>([]);
   const [claiming, setClaiming] = useState<string | null>(null);
+  const [showUpload, setShowUpload] = useState(false);
 
   useEffect(() => {
     const q = query(
@@ -202,6 +204,14 @@ export default function Dashboard() {
         </div>
       </aside>
 
+      {/* Upload modal */}
+      {showUpload && (
+        <UploadModal
+          onClose={() => setShowUpload(false)}
+          onSuccess={() => setShowUpload(false)}
+        />
+      )}
+
       {/* Main */}
       <main className="flex-1 overflow-auto">
         {/* Top bar */}
@@ -213,10 +223,19 @@ export default function Dashboard() {
               {pending.length} match{pending.length !== 1 ? 'es' : ''} available
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs mono px-3 py-1.5 rounded-lg"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-2)' }}>
-            <span className="w-1.5 h-1.5 rounded-full pulse-dot" style={{ background: 'var(--green)' }} />
-            Live
+          <div className="flex items-center gap-3">
+            <button onClick={() => setShowUpload(true)} className="btn-cyan px-4 py-2 text-xs flex items-center gap-2">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M6 9V3M6 3L3.5 5.5M6 3l2.5 2.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M1 9.5v.5a1 1 0 001 1h8a1 1 0 001-1v-.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              Upload match
+            </button>
+            <div className="flex items-center gap-2 text-xs mono px-3 py-1.5 rounded-lg"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-2)' }}>
+              <span className="w-1.5 h-1.5 rounded-full pulse-dot" style={{ background: 'var(--green)' }} />
+              Live
+            </div>
           </div>
         </div>
 
@@ -233,7 +252,8 @@ export default function Dashboard() {
                 </svg>
               </div>
               <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-2)' }}>No matches in queue</p>
-              <p className="text-xs" style={{ color: 'var(--text-3)' }}>Upload a match video to get started</p>
+              <p className="text-xs mb-4" style={{ color: 'var(--text-3)' }}>Upload a match video to get started</p>
+              <button onClick={() => setShowUpload(true)} className="btn-cyan px-5 py-2 text-xs">Upload match →</button>
             </div>
           ) : (
             <div className="space-y-3">
