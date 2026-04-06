@@ -16,10 +16,11 @@ interface Props {
   onTimeUpdate?: (time: number) => void;
   autoPlay?: boolean;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
-  ({ src, startTime, endTime, onTimeUpdate, autoPlay = true, className }, ref) => {
+  ({ src, startTime, endTime, onTimeUpdate, autoPlay = true, className, style }, ref) => {
     const videoRef = useRef<HTMLVideoElement>(null);
 
     useImperativeHandle(ref, () => ({
@@ -68,6 +69,7 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, Props>(
         ref={videoRef}
         src={src}
         className={className}
+        style={style}
         controls={false}
         playsInline
         preload="auto"

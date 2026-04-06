@@ -1,32 +1,163 @@
 @import "tailwindcss";
 
+:root {
+  --bg:        #080B0F;
+  --bg-2:      #0D1117;
+  --surface:   #111827;
+  --surface-2: #1C2333;
+  --surface-3: #252F42;
+  --border:    #1E2A3A;
+  --border-2:  #263447;
+  --cyan:      #00E5FF;
+  --cyan-dim:  #00B8CC;
+  --cyan-glow: rgba(0,229,255,0.15);
+  --green:     #00C853;
+  --red:       #FF3D57;
+  --amber:     #FFB300;
+  --text-1:    #EFF3F8;
+  --text-2:    #8899A6;
+  --text-3:    #4E6272;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html { font-size: 16px; }
+
 body {
-  background: #0f1117;
-  color: #e2e8f0;
+  background: var(--bg);
+  color: var(--text-1);
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-#root {
-  min-height: 100vh;
+#root { min-height: 100dvh; }
+
+/* ── Mono for timecodes ─────────────────────────────── */
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+/* ── Scrollbar ──────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+/* ── Focus ring ─────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
+/* ── Range input (video scrubber) ───────────────────── */
 input[type="range"] {
   -webkit-appearance: none;
-  height: 4px;
-  border-radius: 2px;
-  background: #2e3347;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  background: var(--surface-3);
+  border-radius: 99px;
   outline: none;
   cursor: pointer;
-  width: 100%;
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: #00e5ff;
+  background: var(--cyan);
   cursor: pointer;
+  box-shadow: 0 0 8px var(--cyan-glow);
+  transition: transform 150ms ease;
 }
+input[type="range"]:hover::-webkit-slider-thumb {
+  transform: scale(1.3);
+}
+
+/* ── Animated gradient border ───────────────────────── */
+@keyframes spin-border {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Scan line on login ─────────────────────────────── */
+@keyframes scanline {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+/* ── Fade in ────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 300ms ease forwards; }
+
+/* ── Pulse dot ──────────────────────────────────────── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+.pulse-dot { animation: pulse-dot 1.5s ease infinite; }
+
+/* ── Glow btn ───────────────────────────────────────── */
+.btn-cyan {
+  background: var(--cyan);
+  color: #080B0F;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: background 150ms ease, box-shadow 150ms ease, transform 100ms ease;
+}
+.btn-cyan:hover {
+  background: var(--cyan-dim);
+  box-shadow: 0 0 24px rgba(0,229,255,0.3);
+}
+.btn-cyan:active { transform: scale(0.97); }
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border-2);
+  color: var(--text-2);
+  font-weight: 500;
+  border-radius: 8px;
+  transition: border-color 150ms, color 150ms, background 150ms;
+}
+.btn-ghost:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: var(--cyan-glow);
+}
+
+/* ── Card ───────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.card:hover { border-color: var(--border-2); }
+
+/* ── Kbd ────────────────────────────────────────────── */
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-2);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-2);
+  line-height: 1;
+}
+
+/* ── Status badges ──────────────────────────────────── */
+.badge-processing { background: rgba(255,179,0,0.12); color: var(--amber); border: 1px solid rgba(255,179,0,0.25); }
+.badge-detected   { background: rgba(0,229,255,0.10); color: var(--cyan);  border: 1px solid rgba(0,229,255,0.25); }
+.badge-reviewing  { background: rgba(138,43,226,0.12); color: #B06EFF;     border: 1px solid rgba(138,43,226,0.25); }
+.badge-approved   { background: rgba(0,200,83,0.10);  color: var(--green); border: 1px solid rgba(0,200,83,0.25); }
+.badge-complete   { background: rgba(0,200,83,0.10);  color: var(--green); border: 1px solid rgba(0,200,83,0.25); }
+.badge-error      { background: rgba(255,61,87,0.10); color: var(--red);   border: 1px solid rgba(255,61,87,0.25); }
+.badge-uploaded   { background: rgba(78,98,114,0.15); color: var(--text-2); border: 1px solid var(--border); }

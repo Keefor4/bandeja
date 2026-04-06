@@ -9,7 +9,12 @@
       "Bash(pnpm approve-builds:*)",
       "Bash(printf:*)",
       "Bash(gh:*)",
-      "Bash(pnpm add:*)"
+      "Bash(pnpm add:*)",
+      "Read(//c/Users/Tomer/.claude/skills/ui-ux-pro-max/**)",
+      "Bash(python scripts/search.py \"sports professional review tool dark mode video player\" --design-system -p \"Bandeja\" -f markdown)",
+      "Bash(python3 scripts/search.py \"sports professional review tool dark mode video player\" --design-system -p \"Bandeja\" -f markdown)",
+      "Bash(where python:*)",
+      "Bash(where py:*)"
     ]
   }
 }
