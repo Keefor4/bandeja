@@ -4,6 +4,7 @@ import cors from 'cors';
 import { matchRoutes } from './routes/matches.js';
 import { pointRoutes } from './routes/points.js';
 import { reviewRoutes } from './routes/reviews.js';
+import { feedbackRoutes } from './routes/feedback.js';
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -12,7 +13,6 @@ const STORAGE_PATH = process.env.BANDEJA_STORAGE_PATH ?? 'C:/Users/Tomer/Desktop
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
-// Serve video files directly from local storage
 app.use('/storage', express.static(STORAGE_PATH));
 
 app.get('/health', (_req, res) => {
@@ -22,6 +22,7 @@ app.get('/health', (_req, res) => {
 app.use('/api/matches', matchRoutes);
 app.use('/api/points', pointRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 app.listen(PORT, () => {
   console.log(`Bandeja API running on http://localhost:${PORT}`);

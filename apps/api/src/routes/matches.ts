@@ -85,6 +85,12 @@ matchRoutes.post('/upload', upload.single('video'), async (req, res) => {
       updatedAt: now,
     });
 
+    // Load learned weights (fall back to defaults if not calibrated yet)
+    const weightSnap = await db.collection('settings').doc('detectionWeights').get();
+    const weights = weightSnap.exists
+      ? weightSnap.data()?.weights
+      : { sceneChange: 0.20, motionAnalysis: 0.25, audioAnalysis: 0.35, visionAnalysis: 0.20 };
+
     // Trigger processor — fire and forget
     const processorUrl = process.env.PROCESSOR_URL ?? 'http://localhost:8000';
     fetch(`${processorUrl}/process`, {
@@ -94,6 +100,7 @@ matchRoutes.post('/upload', upload.single('video'), async (req, res) => {
         match_id: matchRef.id,
         video_path: localPath,
         confidence_threshold: 0.7,
+        signal_weights: weights,
       }),
     }).catch((err) => console.error(`Processor trigger failed for ${matchRef.id}:`, err));
 

@@ -178,6 +178,21 @@ export default function Dashboard() {
             </svg>
             Queue
           </div>
+          {profile?.role === 'admin' && (
+            <button
+              onClick={() => navigate('/feedback')}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium text-left transition-colors"
+              style={{ color: 'var(--text-2)' }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-1)'; e.currentTarget.style.background = 'var(--surface-2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-2)'; e.currentTarget.style.background = 'transparent'; }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M1 10V13h3l7-7-3-3-7 7z" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinejoin="round"/>
+                <path d="M10 3l1-1 1 1-1 1-1-1z" fill="currentColor"/>
+              </svg>
+              AI Feedback
+            </button>
+          )}
         </nav>
 
         {/* User */}
