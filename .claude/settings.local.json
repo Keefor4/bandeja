@@ -8,7 +8,8 @@
       "Bash(pnpm install:*)",
       "Bash(pnpm approve-builds:*)",
       "Bash(printf:*)",
-      "Bash(gh:*)"
+      "Bash(gh:*)",
+      "Bash(pnpm add:*)"
     ]
   }
 }
