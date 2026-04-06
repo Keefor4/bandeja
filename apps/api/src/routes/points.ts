@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-export const pointRoutes = Router();
+export const pointRoutes: Router = Router();
 
 // GET /api/points?matchId=xxx
 pointRoutes.get('/', async (req, res) => {

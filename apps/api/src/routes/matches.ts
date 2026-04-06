@@ -6,7 +6,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { db } from '../firebase.js';
 import { getStorage } from '../storage/index.js';
 
-export const matchRoutes = Router();
+export const matchRoutes: Router = Router();
 
 // Write directly to storage path so we never load the whole file into RAM
 const storagePath = process.env.BANDEJA_STORAGE_PATH ?? 'C:/Users/Tomer/Desktop/Bandeja video';

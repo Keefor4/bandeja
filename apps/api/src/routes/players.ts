@@ -4,7 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { db } from '../firebase.js';
 import { getStorage } from '../storage/index.js';
 
-export const playerRoutes = Router();
+export const playerRoutes: Router = Router();
 
 // GET /api/players/frames/:matchId
 // Calls the processor to extract 4 player frames from the first ~30s of the video

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 
-export const reviewRoutes = Router();
+export const reviewRoutes: Router = Router();
 
 // POST /api/reviews — submit a review decision
 reviewRoutes.post('/', async (req, res) => {

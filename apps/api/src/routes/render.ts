@@ -6,7 +6,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { db } from '../firebase.js';
 import type { DetectedPoint } from '@bandeja/shared';
 
-export const renderRoutes = Router();
+export const renderRoutes: Router = Router();
 
 const STORAGE_PATH = process.env.BANDEJA_STORAGE_PATH ?? 'C:/Users/Tomer/Desktop/Bandeja video';
 const API_BASE = process.env.API_BASE_URL ?? 'http://localhost:4000';
@@ -88,7 +88,7 @@ async function runRender(
     .orderBy('pointNumber', 'asc')
     .get();
 
-  let points = pointsSnap.docs.map(d => ({ id: d.id, ...(d.data() as DetectedPoint) }));
+  let points = pointsSnap.docs.map(d => ({ ...(d.data() as DetectedPoint), id: d.id }));
 
   // Fetch pointStats
   const statsSnap = await db.collection('pointStats').where('matchId', '==', matchId).get();

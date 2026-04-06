@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { FieldValue } from 'firebase-admin/firestore';
 import { db } from '../firebase.js';
 
-export const feedbackRoutes = Router();
+export const feedbackRoutes: Router = Router();
 
 const DEFAULT_WEIGHTS = {
   sceneChange:    0.20,
