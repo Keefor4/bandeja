@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && getRole() == 'admin';
+    }
+
+    function isReviewer() {
+      return isSignedIn() && (getRole() == 'admin' || getRole() == 'reviewer');
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // Matches
+    match /matches/{matchId} {
+      allow read: if isSignedIn();
+      allow create: if isReviewer();
+      allow update: if isReviewer();
+      allow delete: if isAdmin();
+    }
+
+    // Detected points
+    match /points/{pointId} {
+      allow read: if isSignedIn();
+      allow write: if isReviewer();
+    }
+
+    // Review decisions
+    match /reviews/{reviewId} {
+      allow read: if isSignedIn();
+      allow create: if isReviewer();
+      allow update: if isAdmin();
+    }
+
+    // Feedback (training data) — never delete
+    match /feedback/{feedbackId} {
+      allow read: if isAdmin();
+      allow create: if isReviewer();
+      allow update, delete: if false;
+    }
+
+    // Settings
+    match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}

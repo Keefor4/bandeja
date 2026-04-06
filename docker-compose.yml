@@ -1,0 +1,71 @@
+services:
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:4000
+      - VITE_FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+    depends_on:
+      - api
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile.dev
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./apps/api:/app
+      - /app/node_modules
+      - bandeja-videos:/storage
+    environment:
+      - PORT=4000
+      - BANDEJA_STORAGE_PATH=/storage
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - PROCESSOR_URL=http://processor:8000
+    depends_on:
+      - firebase-emulator
+
+  processor:
+    build:
+      context: ./apps/processor
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps/processor:/app
+      - bandeja-videos:/storage
+    environment:
+      - BANDEJA_STORAGE_PATH=/storage
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - CONFIDENCE_THRESHOLD=0.7
+
+  firebase-emulator:
+    image: andreysenov/firebase-tools
+    command: firebase emulators:start --project ${FIREBASE_PROJECT_ID} --only auth,firestore
+    ports:
+      - "4001:4001"   # Emulator UI
+      - "8080:8080"   # Firestore
+      - "9099:9099"   # Auth
+    volumes:
+      - ./firebase:/home/node
+    environment:
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+
+volumes:
+  bandeja-videos:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: "C:/Users/Tomer/Desktop/Bandeja video"
