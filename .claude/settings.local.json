@@ -14,7 +14,15 @@
       "Bash(python scripts/search.py \"sports professional review tool dark mode video player\" --design-system -p \"Bandeja\" -f markdown)",
       "Bash(python3 scripts/search.py \"sports professional review tool dark mode video player\" --design-system -p \"Bandeja\" -f markdown)",
       "Bash(where python:*)",
-      "Bash(where py:*)"
+      "Bash(where py:*)",
+      "Bash(pnpm --filter @bandeja/shared build)",
+      "Bash(pnpm --filter @bandeja/web tsc --noEmit)",
+      "Bash(npx tsc:*)",
+      "Bash(python scripts/search.py \"sports video editing review tool admin dark broadcast\" --design-system -p \"Bandeja\" -f markdown)",
+      "Bash(python3 scripts/search.py \"sports video editing review tool admin dark broadcast\" --design-system -p \"Bandeja\" -f markdown)",
+      "Bash(where python3:*)",
+      "Bash(ls \"C:/Users/Tomer/Desktop/Bandeja Editing\"/.env*)",
+      "Bash(dir:*)"
     ]
   }
 }
