@@ -36,6 +36,10 @@ class ProcessResponse(BaseModel):
     message: str
 
 
+class ExtractPlayersRequest(BaseModel):
+    video_path: str
+
+
 def get_firestore():
     import firebase_admin
     from firebase_admin import credentials, firestore
@@ -50,6 +54,38 @@ def get_firestore():
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "bandeja-processor"}
+
+
+@app.post("/extract-players")
+async def extract_players(req: ExtractPlayersRequest):
+    """
+    Extract 4 frames from the first ~30s of a match video.
+    Samples one frame per ~7 seconds so you get good coverage of initial court positions.
+    Returns base64 JPEG strings for each frame.
+    """
+    import cv2
+    import base64
+
+    cap = cv2.VideoCapture(req.video_path)
+    if not cap.isOpened():
+        return {"error": "Could not open video", "frames": []}
+
+    fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
+    # Sample at 5s, 12s, 20s, 28s — these tend to show players at court positions
+    sample_times = [5.0, 12.0, 20.0, 28.0]
+    frames_b64 = []
+
+    for t in sample_times:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, int(t * fps))
+        ret, frame = cap.read()
+        if not ret:
+            continue
+        frame = cv2.resize(frame, (1280, 720))
+        _, buf = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        frames_b64.append(base64.b64encode(buf.tobytes()).decode('utf-8'))
+
+    cap.release()
+    return {"frames": frames_b64}
 
 
 @app.post("/process", response_model=ProcessResponse)
@@ -99,9 +135,20 @@ async def run_detection_pipeline(req: ProcessRequest):
         points = assemble_points(req.match_id, segments, weights=weights)
         print(f"[{req.match_id}] Detected {len(points)} points")
 
+        # Stage 5: Winner detection via Claude Vision on last frames of each point
+        from src.detection.winner import detect_winner
+        print(f"[{req.match_id}] Stage 5: Winner detection")
+        winner_results = {}
+        for point in points:
+            result = detect_winner(req.video_path, point.end_time)
+            winner_results[point.id] = result
+            status = "auto" if not result["needs_review"] else "needs_review"
+            print(f"  Point #{point.point_number}: winner={result['winner']} conf={result['confidence']:.2f} [{status}]")
+
         if db and points:
             batch = db.batch()
             for point in points:
+                wr = winner_results.get(point.id, {})
                 ref = db.collection("points").document(point.id)
                 batch.set(ref, {
                     "matchId": point.match_id,
@@ -112,6 +159,12 @@ async def run_detection_pipeline(req: ProcessRequest):
                     "confidence": point.confidence,
                     "detectionSignals": point.detection_signals,
                     "status": "pending",
+                    "winnerDetection": {
+                        "winner": wr.get("winner"),
+                        "confidence": wr.get("confidence", 0.0),
+                        "reason": wr.get("reason", ""),
+                        "needsReview": wr.get("needs_review", True),
+                    },
                 })
             batch.commit()
             match_ref.update({"status": "detected", "processingProgress": 100, "pointsDetected": len(points)})

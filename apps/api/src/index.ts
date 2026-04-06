@@ -5,6 +5,8 @@ import { matchRoutes } from './routes/matches.js';
 import { pointRoutes } from './routes/points.js';
 import { reviewRoutes } from './routes/reviews.js';
 import { feedbackRoutes } from './routes/feedback.js';
+import { playerRoutes } from './routes/players.js';
+import { renderRoutes } from './routes/render.js';
 
 const app = express();
 const PORT = process.env.PORT ?? 4000;
@@ -23,6 +25,8 @@ app.use('/api/matches', matchRoutes);
 app.use('/api/points', pointRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/players', playerRoutes);
+app.use('/api/render', renderRoutes);
 
 app.listen(PORT, () => {
   console.log(`Bandeja API running on http://localhost:${PORT}`);

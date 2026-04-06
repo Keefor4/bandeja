@@ -1,0 +1,18 @@
+{
+  "name": "@bandeja/remotion",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio src/Root.tsx"
+  },
+  "dependencies": {
+    "remotion": "^4.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.4.5"
+  }
+}
