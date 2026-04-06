@@ -42,9 +42,12 @@ services:
     # Override dev CMD: remove --reload, add workers
     command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --workers 2
     environment:
+      - PYTHONUNBUFFERED=1
       - BANDEJA_STORAGE_PATH=/storage
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
       - CONFIDENCE_THRESHOLD=0.7
     volumes:
       - bandeja-videos:/storage
