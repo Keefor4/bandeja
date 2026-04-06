@@ -10,7 +10,8 @@ export class LocalStorageProvider implements StorageProvider {
   }
 
   async upload(filename: string, data: Buffer, _mimeType: string): Promise<string> {
-    await fs.mkdir(this.basePath, { recursive: true });
+    const fullPath = path.join(this.basePath, path.dirname(filename));
+    await fs.mkdir(fullPath, { recursive: true });
     const filePath = path.join(this.basePath, filename);
     await fs.writeFile(filePath, data);
     return filename;
@@ -22,8 +23,11 @@ export class LocalStorageProvider implements StorageProvider {
   }
 
   getUrl(storagePath: string): string {
-    // For local storage, return a path the API can serve statically
     return `/storage/${storagePath}`;
+  }
+
+  getLocalPath(storagePath: string): string {
+    return path.join(this.basePath, storagePath);
   }
 
   async delete(storagePath: string): Promise<void> {
