@@ -3,9 +3,9 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-function Info    { param($msg) Write-Host "▸ $msg" -ForegroundColor Cyan }
-function Success { param($msg) Write-Host "✓ $msg" -ForegroundColor Green }
-function Fail    { param($msg) Write-Host "✗ $msg" -ForegroundColor Red; exit 1 }
+function Info    { param($msg) Write-Host ">> $msg" -ForegroundColor Cyan }
+function Success { param($msg) Write-Host "OK $msg" -ForegroundColor Green }
+function Fail    { param($msg) Write-Host "FAIL $msg" -ForegroundColor Red; exit 1 }
 
 # ── Pre-flight checks ──────────────────────────────────────────────────────────
 if (-not (Test-Path ".env")) {
@@ -75,8 +75,8 @@ $ip = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias Ethernet* 2>$null | 
 if (-not $ip) { $ip = "your-pc-ip" }
 
 Write-Host ""
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green
+Write-Host "======================================" -ForegroundColor Green
 Write-Host "  Bandeja deployed!" -ForegroundColor Green
 Write-Host "  App:    http://$ip"
 Write-Host "  Health: http://$ip/api/health"
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green
+Write-Host "======================================" -ForegroundColor Green

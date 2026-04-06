@@ -322,7 +322,7 @@ export default function PointReview() {
 
   // Tagging state
   const [taggingPoint, setTaggingPoint] = useState<(DetectedPoint & { id: string }) | null>(null);
-  const [pendingCorrected, setPendingCorrected] = useState<{ start: number; end: number } | null>(null);
+  const [, setPendingCorrected] = useState<{ start: number; end: number } | null>(null);
   const [tagDraft, setTagDraft] = useState<TagDraft>({
     winner: null, winnerAuto: false, shotType: null, howWon: null, rallyLength: 4,
   });
@@ -359,7 +359,7 @@ export default function PointReview() {
         orderBy('confidence', 'asc')
       );
       const snap = await getDocs(q);
-      setPoints(snap.docs.map(d => ({ id: d.id, ...(d.data() as DetectedPoint) })));
+      setPoints(snap.docs.map(d => ({ ...(d.data() as DetectedPoint), id: d.id })));
     })();
   }, [matchId]);
 
@@ -518,7 +518,7 @@ export default function PointReview() {
   );
 
   const progress = idx / Math.max(points.length, 1);
-  const { gameScore, setScore: setScoreStr, matchScore } = scoreToStrings(score, players);
+  const { gameScore, setScore: setScoreStr } = scoreToStrings(score, players);
 
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: 'var(--bg)' }}>

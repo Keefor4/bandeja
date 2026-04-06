@@ -70,7 +70,7 @@ export default function MatchDetail() {
   useEffect(() => {
     if (!matchId) return;
     const unsub = onSnapshot(doc(db, 'matches', matchId), snap => {
-      if (snap.exists()) setMatch({ id: snap.id, ...(snap.data() as Match) });
+      if (snap.exists()) setMatch({ ...(snap.data() as Match), id: snap.id });
     });
     return unsub;
   }, [matchId]);
@@ -86,7 +86,7 @@ export default function MatchDetail() {
         orderBy('pointNumber', 'asc'),
       );
       const snap = await getDocs(q);
-      setPoints(snap.docs.map(d => ({ id: d.id, ...(d.data() as DetectedPoint) })));
+      setPoints(snap.docs.map(d => ({ ...(d.data() as DetectedPoint), id: d.id })));
 
       const statsSnap = await getDocs(
         query(collection(db, 'pointStats'), where('matchId', '==', matchId)),

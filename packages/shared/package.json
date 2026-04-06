@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "firebase": "^11.0.0",
     "typescript": "^5.4.5"
   }
 }

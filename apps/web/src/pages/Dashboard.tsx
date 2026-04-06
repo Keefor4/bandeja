@@ -177,7 +177,7 @@ export default function Dashboard() {
       orderBy('createdAt', 'desc')
     );
     return onSnapshot(q, snap => {
-      const all = snap.docs.map(d => ({ id: d.id, ...(d.data() as Match) }));
+      const all = snap.docs.map(d => ({ ...(d.data() as Match), id: d.id }));
       if (profile?.role === 'admin') {
         setMatches(all);
       } else {

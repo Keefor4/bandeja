@@ -39,7 +39,7 @@ export interface Match {
 export interface MatchPlayers {
   team1: { player1: string; player2: string };
   team2: { player1: string; player2: string };
-  identifiedAt: Timestamp;
+  identifiedAt?: Timestamp;
 }
 
 // ─── DetectedPoint ───────────────────────────────────────────────────────────
