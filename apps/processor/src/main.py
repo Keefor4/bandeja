@@ -69,9 +69,14 @@ def _find_player_crops(frame):
     """
     Detect 4 players on an overhead padel court.
 
-    Works by masking out the blue court surface and white lines, leaving only
-    player blobs. Takes the 4 largest blobs and returns center-padded crops
-    sorted left-to-right across the court.
+    Approach:
+    1. Find the court playing surface (largest blue blob) to get court bounds.
+    2. Divide the court into 4 quadrants (net splits top/bottom, midpoint splits left/right).
+    3. In each quadrant find the largest non-blue blob — that's the player.
+    4. Return a close-up crop centered on each player (fallback: quadrant center).
+
+    This works regardless of player clothing color and ignores fences/walls/stands
+    because the search is restricted to within the court boundary.
     """
     import cv2
     import numpy as np
@@ -79,59 +84,85 @@ def _find_player_crops(frame):
     orig_h, orig_w = frame.shape[:2]
     hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-    # --- Mask the blue court floor ---
-    # Padel courts are typically bright blue; covers a wide HSV range to be robust.
-    court_mask = cv2.inRange(hsv, np.array([85, 40, 30]), np.array([150, 255, 255]))
+    # ── Step 1: Locate the court ─────────────────────────────────────────────
+    # Blue court surface mask (wide range to handle different lighting)
+    court_color = cv2.inRange(hsv, np.array([85, 35, 25]), np.array([150, 255, 255]))
+    k_close = cv2.getStructuringElement(cv2.MORPH_RECT, (20, 20))
+    court_closed = cv2.morphologyEx(court_color, cv2.MORPH_CLOSE, k_close, iterations=3)
 
-    # --- Mask white lines and very bright areas ---
-    white_mask = cv2.inRange(hsv, np.array([0, 0, 185]), np.array([180, 45, 255]))
-
-    # --- Player mask: everything that is neither court nor lines ---
-    player_mask = cv2.bitwise_not(cv2.bitwise_or(court_mask, white_mask))
-
-    # Morphological cleanup: remove small noise, fill holes in player blobs
-    k_open  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-    k_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
-    player_mask = cv2.morphologyEx(player_mask, cv2.MORPH_OPEN,  k_open)
-    player_mask = cv2.morphologyEx(player_mask, cv2.MORPH_CLOSE, k_close, iterations=3)
-
-    # --- Find blobs ---
-    num_labels, _, stats, centroids = cv2.connectedComponentsWithStats(player_mask)
-
-    # Keep only blobs in a plausible player size range
-    min_area = orig_w * orig_h * 0.0008   # > ~0.08 % of frame
-    max_area = orig_w * orig_h * 0.06     # < ~6 % of frame (not the whole court side)
-
-    blobs = []
-    for i in range(1, num_labels):  # skip label 0 (background)
-        area = int(stats[i, cv2.CC_STAT_AREA])
-        if min_area <= area <= max_area:
-            blobs.append((area, int(centroids[i][0]), int(centroids[i][1])))
-
-    # Sort by area descending, take top 4
-    blobs.sort(reverse=True)
-    top4 = blobs[:4]
-
-    if not top4:
+    n_labels, _, stats, _ = cv2.connectedComponentsWithStats(court_closed)
+    if n_labels < 2:
         return []
 
-    # Sort left-to-right so Team-1 (left) comes before Team-2 (right)
-    top4.sort(key=lambda b: b[1])
+    # Largest blob = the court playing surface
+    court_idx = max(range(1, n_labels), key=lambda i: stats[i, cv2.CC_STAT_AREA])
+    court_x  = stats[court_idx, cv2.CC_STAT_LEFT]
+    court_y  = stats[court_idx, cv2.CC_STAT_TOP]
+    court_w  = stats[court_idx, cv2.CC_STAT_WIDTH]
+    court_h  = stats[court_idx, cv2.CC_STAT_HEIGHT]
 
-    # Crop each player centered on their blob centroid
-    # Use a fixed window proportional to the frame so every crop looks consistent
-    half_w = int(orig_w * 0.09)   # ~9 % of frame width
-    half_h = int(orig_h * 0.16)   # ~16 % of frame height
+    # Inset 4% to stay away from boundary noise
+    inset_x = int(court_w * 0.04)
+    inset_y = int(court_h * 0.04)
+    x_min = court_x + inset_x
+    y_min = court_y + inset_y
+    x_max = court_x + court_w - inset_x
+    y_max = court_y + court_h - inset_y
+
+    # ── Step 2: Build player mask restricted to inside the court ─────────────
+    white_mask = cv2.inRange(hsv, np.array([0, 0, 180]), np.array([180, 45, 255]))
+    non_court  = cv2.bitwise_not(cv2.bitwise_or(court_color, white_mask))
+
+    # Keep only pixels inside the court bounding box
+    court_roi = np.zeros_like(non_court)
+    court_roi[y_min:y_max, x_min:x_max] = non_court[y_min:y_max, x_min:x_max]
+
+    k_open  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    k_close2 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13, 13))
+    court_roi = cv2.morphologyEx(court_roi, cv2.MORPH_OPEN,  k_open)
+    court_roi = cv2.morphologyEx(court_roi, cv2.MORPH_CLOSE, k_close2, iterations=2)
+
+    # ── Step 3: 4 quadrants — net at vertical midpoint, midline at horizontal midpoint
+    net_y  = (y_min + y_max) // 2
+    mid_x  = (x_min + x_max) // 2
+
+    quadrants = [
+        (y_min, net_y,  x_min, mid_x),   # Team 1 · Left
+        (y_min, net_y,  mid_x, x_max),   # Team 1 · Right
+        (net_y, y_max,  x_min, mid_x),   # Team 2 · Left
+        (net_y, y_max,  mid_x, x_max),   # Team 2 · Right
+    ]
 
     crops = []
-    for _, cx, cy in top4:
-        x1 = max(0, cx - half_w)
-        y1 = max(0, cy - half_h)
-        x2 = min(orig_w, cx + half_w)
-        y2 = min(orig_h, cy + half_h)
-        crop = frame[y1:y2, x1:x2]
-        crop_resized = cv2.resize(crop, (220, 320))
-        crops.append(crop_resized)
+    for (qy1, qy2, qx1, qx2) in quadrants:
+        # Largest blob in this quadrant = player
+        quad_mask = np.zeros_like(court_roi)
+        quad_mask[qy1:qy2, qx1:qx2] = court_roi[qy1:qy2, qx1:qx2]
+
+        nq, _, qstats, qcent = cv2.connectedComponentsWithStats(quad_mask)
+
+        if nq >= 2:
+            best = max(range(1, nq), key=lambda i: qstats[i, cv2.CC_STAT_AREA])
+            pcx = int(qcent[best][0])
+            pcy = int(qcent[best][1])
+        else:
+            # Fallback: center of the quadrant
+            pcx = (qx1 + qx2) // 2
+            pcy = (qy1 + qy2) // 2
+
+        # ── Step 4: Crop centered on the player ──────────────────────────────
+        # Half-size = half the quadrant dimensions → player fills ~50% of crop
+        half_w = (qx2 - qx1) // 2
+        half_h = (qy2 - qy1) // 2
+        cx1 = max(0,      pcx - half_w)
+        cy1 = max(0,      pcy - half_h)
+        cx2 = min(orig_w, pcx + half_w)
+        cy2 = min(orig_h, pcy + half_h)
+
+        crop = frame[cy1:cy2, cx1:cx2]
+        if crop.size > 0:
+            crop_resized = cv2.resize(crop, (220, 280))
+            crops.append(crop_resized)
 
     return crops
 

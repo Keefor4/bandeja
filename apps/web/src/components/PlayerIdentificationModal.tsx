@@ -178,7 +178,7 @@ export default function PlayerIdentificationModal({ matchId, onClose, onSaved }:
                       <div
                         className="shrink-0 rounded-xl overflow-hidden"
                         style={{
-                          width: 80, height: 110,
+                          width: 120, height: 150,
                           background: 'var(--surface)',
                           border: `1px solid ${playerCrops[cropIdx] ? accent : 'var(--border)'}`,
                           opacity: playerCrops[cropIdx] ? 1 : 0.4,
