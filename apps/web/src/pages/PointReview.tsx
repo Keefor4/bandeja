@@ -550,7 +550,7 @@ export default function PointReview() {
   const { gameScore, setScore: setScoreStr } = scoreToStrings(score, players);
 
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: 'var(--bg)' }}>
+    <div className="h-dvh flex flex-col overflow-hidden" style={{ background: 'var(--bg)' }}>
 
       {/* ── Header ──────────────────────────────────── */}
       <header className="shrink-0 flex items-center gap-4 px-4 py-3 border-b"
@@ -660,7 +660,7 @@ export default function PointReview() {
         </aside>
 
         {/* Video + Scrubber column */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
 
           {/* Key Guidance */}
           <div className="shrink-0 px-5 py-3 border-b"
@@ -677,7 +677,7 @@ export default function PointReview() {
           </div>
 
           {/* Video */}
-          <div className="flex-1 bg-black flex items-center justify-center relative overflow-hidden">
+          <div className="flex-1 min-h-0 bg-black flex items-center justify-center relative overflow-hidden">
             <VideoPlayer
               ref={playerRef}
               src={videoSrc}
