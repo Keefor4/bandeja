@@ -52,9 +52,9 @@ def analyze_audio(video_path: str, segments: list[Segment]) -> list[Segment]:
             print("WARNING: FFmpeg audio extraction failed — skipping audio analysis")
             return segments
 
-        # Skip audio analysis if file is too large (>300MB WAV = ~1.5GB video)
+        # Skip audio analysis if file is too large (>150MB WAV)
         audio_size_mb = os.path.getsize(audio_path) / (1024 * 1024)
-        if audio_size_mb > 300:
+        if audio_size_mb > 150:
             print(f"WARNING: Audio file too large ({audio_size_mb:.0f}MB) — skipping audio analysis to avoid OOM")
             return segments
 

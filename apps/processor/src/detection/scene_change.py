@@ -62,8 +62,16 @@ def detect_scene_changes(video_path: str, threshold: float = 0.3) -> list[Segmen
         except ValueError:
             continue
 
+    # Fallback: if no keyframes found, split into 30s segments
+    if len(change_times) <= 1:
+        print("  No keyframes found — falling back to 30s fixed segments")
+        t = 30.0
+        while t < total_duration:
+            change_times.append(t)
+            t += 30.0
+
     change_times.append(total_duration)
-    print(f"  Found {len(change_times) - 2} keyframe boundaries")
+    print(f"  Found {len(change_times) - 2} scene boundaries")
 
     segments = []
     for i in range(len(change_times) - 1):
