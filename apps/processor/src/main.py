@@ -65,16 +65,87 @@ def health():
     return {"status": "ok", "service": "bandeja-processor"}
 
 
+def _find_player_crops(frame):
+    """
+    Detect 4 players on an overhead padel court.
+
+    Works by masking out the blue court surface and white lines, leaving only
+    player blobs. Takes the 4 largest blobs and returns center-padded crops
+    sorted left-to-right across the court.
+    """
+    import cv2
+    import numpy as np
+
+    orig_h, orig_w = frame.shape[:2]
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+    # --- Mask the blue court floor ---
+    # Padel courts are typically bright blue; covers a wide HSV range to be robust.
+    court_mask = cv2.inRange(hsv, np.array([85, 40, 30]), np.array([150, 255, 255]))
+
+    # --- Mask white lines and very bright areas ---
+    white_mask = cv2.inRange(hsv, np.array([0, 0, 185]), np.array([180, 45, 255]))
+
+    # --- Player mask: everything that is neither court nor lines ---
+    player_mask = cv2.bitwise_not(cv2.bitwise_or(court_mask, white_mask))
+
+    # Morphological cleanup: remove small noise, fill holes in player blobs
+    k_open  = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    k_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
+    player_mask = cv2.morphologyEx(player_mask, cv2.MORPH_OPEN,  k_open)
+    player_mask = cv2.morphologyEx(player_mask, cv2.MORPH_CLOSE, k_close, iterations=3)
+
+    # --- Find blobs ---
+    num_labels, _, stats, centroids = cv2.connectedComponentsWithStats(player_mask)
+
+    # Keep only blobs in a plausible player size range
+    min_area = orig_w * orig_h * 0.0008   # > ~0.08 % of frame
+    max_area = orig_w * orig_h * 0.06     # < ~6 % of frame (not the whole court side)
+
+    blobs = []
+    for i in range(1, num_labels):  # skip label 0 (background)
+        area = int(stats[i, cv2.CC_STAT_AREA])
+        if min_area <= area <= max_area:
+            blobs.append((area, int(centroids[i][0]), int(centroids[i][1])))
+
+    # Sort by area descending, take top 4
+    blobs.sort(reverse=True)
+    top4 = blobs[:4]
+
+    if not top4:
+        return []
+
+    # Sort left-to-right so Team-1 (left) comes before Team-2 (right)
+    top4.sort(key=lambda b: b[1])
+
+    # Crop each player centered on their blob centroid
+    # Use a fixed window proportional to the frame so every crop looks consistent
+    half_w = int(orig_w * 0.09)   # ~9 % of frame width
+    half_h = int(orig_h * 0.16)   # ~16 % of frame height
+
+    crops = []
+    for _, cx, cy in top4:
+        x1 = max(0, cx - half_w)
+        y1 = max(0, cy - half_h)
+        x2 = min(orig_w, cx + half_w)
+        y2 = min(orig_h, cy + half_h)
+        crop = frame[y1:y2, x1:x2]
+        crop_resized = cv2.resize(crop, (220, 320))
+        crops.append(crop_resized)
+
+    return crops
+
+
 @app.post("/extract-players")
 async def extract_players(req: ExtractPlayersRequest):
     """
-    Find the frame with the most players visible, then return close-up crops
-    of each detected player alongside the full reference frame.
+    Return 4 close-up overhead crops — one per player — from the best frame
+    found starting at 10 minutes into the video.
 
     Response:
-      frames       - list with the best full-court frame (base64 JPEG)
-      player_crops - list of up to 4 close-up crops, one per detected player,
-                     sorted left-to-right across the court
+      frames       - best full-court frame (base64 JPEG, for reference)
+      player_crops - 4 individual player crops sorted left-to-right (base64 JPEG)
+      players_found - number of player blobs detected
     """
     import cv2
     import base64
@@ -87,22 +158,18 @@ async def extract_players(req: ExtractPlayersRequest):
     total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
     total_duration = total_frames / fps if total_frames > 0 else 3600.0
 
-    # Start at 10 minutes in (or 10% of video, minimum 60s)
+    # Start at 10 min in (or 10 % of video, minimum 60 s)
     start_time = max(60.0, min(600.0, total_duration * 0.10))
-    end_time = min(total_duration * 0.80, start_time + 300.0)
+    end_time   = min(total_duration * 0.80, start_time + 300.0)
     if end_time <= start_time:
         end_time = max(start_time + 10.0, total_duration - 10.0)
-
-    hog = cv2.HOGDescriptor()
-    hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 
     num_candidates = 20
     step = (end_time - start_time) / max(num_candidates - 1, 1)
     candidate_times = [start_time + step * i for i in range(num_candidates)]
 
     best_frame = None
-    best_rects_scaled = []   # rects in original frame coordinates
-    best_count = 0
+    best_crops: list = []
 
     for t in candidate_times:
         cap.set(cv2.CAP_PROP_POS_FRAMES, int(t * fps))
@@ -110,61 +177,33 @@ async def extract_players(req: ExtractPlayersRequest):
         if not ret:
             continue
 
-        orig_h, orig_w = frame.shape[:2]
-        small = cv2.resize(frame, (640, 360))
-        rects, _ = hog.detectMultiScale(
-            small, winStride=(8, 8), padding=(4, 4), scale=1.05,
-        )
-
-        if len(rects) > best_count:
-            best_count = len(rects)
+        crops = _find_player_crops(frame)
+        if len(crops) > len(best_crops):
+            best_crops = crops
             best_frame = frame.copy()
-            # Scale bounding boxes back to original resolution
-            sx, sy = orig_w / 640.0, orig_h / 360.0
-            best_rects_scaled = [
-                (int(x * sx), int(y * sy), int(w * sx), int(h * sy))
-                for (x, y, w, h) in rects
-            ]
-            if best_count >= 4:
-                break  # good enough — all 4 players found
+            if len(best_crops) >= 4:
+                break  # found all 4 — stop scanning
 
     cap.release()
 
     if best_frame is None:
         return {"error": "Could not read frames", "frames": [], "player_crops": []}
 
-    orig_h, orig_w = best_frame.shape[:2]
-
-    # --- Full reference frame ---
+    # Full reference frame
     frame_display = cv2.resize(best_frame, (1280, 720))
     _, buf = cv2.imencode('.jpg', frame_display, [cv2.IMWRITE_JPEG_QUALITY, 85])
     full_b64 = base64.b64encode(buf.tobytes()).decode('utf-8')
 
-    # --- Player close-up crops ---
-    # Sort left-to-right (x position) so Team 1 left / Team 2 right order is preserved
-    best_rects_scaled.sort(key=lambda r: r[0])
-    top4 = best_rects_scaled[:4]
-
-    player_crops: list[str] = []
-    for (x, y, w, h) in top4:
-        # Generous padding: 50% horizontally, 25% vertically (shows shoulders/head clearly)
-        pad_x = int(w * 0.5)
-        pad_y = int(h * 0.25)
-        x1 = max(0, x - pad_x)
-        y1 = max(0, y - pad_y)
-        x2 = min(orig_w, x + w + pad_x)
-        y2 = min(orig_h, y + h + pad_y)
-
-        crop = best_frame[y1:y2, x1:x2]
-        # Portrait crop at fixed size so all thumbnails look uniform
-        crop_resized = cv2.resize(crop, (220, 320))
-        _, cbuf = cv2.imencode('.jpg', crop_resized, [cv2.IMWRITE_JPEG_QUALITY, 90])
-        player_crops.append(base64.b64encode(cbuf.tobytes()).decode('utf-8'))
+    # Encode individual player crops
+    player_crops_b64 = []
+    for crop in best_crops:
+        _, cbuf = cv2.imencode('.jpg', crop, [cv2.IMWRITE_JPEG_QUALITY, 92])
+        player_crops_b64.append(base64.b64encode(cbuf.tobytes()).decode('utf-8'))
 
     return {
         "frames": [full_b64],
-        "player_crops": player_crops,
-        "players_found": best_count,
+        "player_crops": player_crops_b64,
+        "players_found": len(best_crops),
     }
 
 
