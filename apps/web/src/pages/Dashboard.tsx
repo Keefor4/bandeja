@@ -8,6 +8,33 @@ import { useAuth } from '../contexts/AuthContext';
 import UploadModal from '../components/UploadModal';
 import type { Match } from '@bandeja/shared';
 
+/**
+ * Parses camera filenames like "Court5 03 04 2026 08 30 14 10 25 06 000 2L 1L 192.168.194.5 c729c678"
+ * Returns { title: "Court 5 · Apr 3, 2026 · 08:30", id: "c729c678" }
+ */
+function formatMatchTitle(raw: string): { title: string; id: string | null } {
+  // Match: CourtN DD MM YYYY HH MM ...
+  const m = raw.match(/^Court(\d+)\s+(\d{2})\s+(\d{2})\s+(\d{4})\s+(\d{2})\s+(\d{2})/i);
+  if (!m) return { title: raw, id: null };
+
+  const courtNum = m[1];
+  const day = parseInt(m[2], 10);
+  const month = parseInt(m[3], 10) - 1; // 0-indexed
+  const year = parseInt(m[4], 10);
+  const hour = m[5];
+  const minute = m[6];
+
+  const date = new Date(year, month, day);
+  const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const title = `Court ${courtNum} · ${dateStr} · ${hour}:${minute}`;
+
+  // Extract trailing hash/IP — last token that looks like a short hex hash
+  const tokens = raw.split(/\s+/);
+  const hashToken = tokens.findLast(t => /^[a-f0-9]{6,12}$/i.test(t)) ?? null;
+
+  return { title, id: hashToken };
+}
+
 const STATUS_LABEL: Record<string, string> = {
   uploaded: 'Uploaded', processing: 'Processing', detected: 'Ready',
   reviewing: 'In Review', approved: 'Approved', rendering: 'Rendering',
@@ -43,6 +70,7 @@ function MatchCard({
   const approved = match.pointsApproved ?? 0;
   const progress = total > 0 ? Math.round((approved / total) * 100) : 0;
   const isComplete = match.status === 'complete';
+  const { title: formattedTitle, id: matchShortId } = formatMatchTitle(match.title);
   const isRendering = match.status === 'rendering';
   const isProcessing = match.status === 'processing' || match.status === 'uploaded';
   const processingProgress = match.processingProgress ?? 0;
@@ -70,7 +98,7 @@ function MatchCard({
     >
       <div className="flex gap-4 p-5">
         {/* Thumbnail */}
-        <div className="shrink-0 w-[88px] h-[58px] rounded-lg overflow-hidden flex items-center justify-center"
+        <div className="shrink-0 w-[100px] h-[68px] rounded-lg overflow-hidden flex items-center justify-center"
           style={{
             background: `linear-gradient(135deg, var(--surface-2) 0%, var(--surface-3) 100%)`,
             border: '1px solid var(--border)',
@@ -92,9 +120,14 @@ function MatchCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3 mb-2.5">
             <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-semibold truncate leading-tight mb-1.5" style={{ color: 'var(--text-1)' }}>
-                {match.title}
+              <h3 className="text-sm font-semibold truncate leading-tight" style={{ color: 'var(--text-1)' }}>
+                {formattedTitle}
               </h3>
+              {matchShortId && (
+                <p className="mono text-xs truncate mb-1" style={{ color: 'var(--text-3)', fontSize: 11 }}>
+                  ID: {matchShortId}
+                </p>
+              )}
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={`badge ${BADGE_CLASS[match.status] ?? 'badge-uploaded'}`}>
                   {STATUS_LABEL[match.status] ?? match.status}

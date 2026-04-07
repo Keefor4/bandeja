@@ -58,7 +58,7 @@ function ActionButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
+      className="w-full flex items-center justify-between px-3 py-3.5 rounded-lg text-sm font-medium transition-all duration-150 disabled:opacity-30 disabled:cursor-not-allowed"
       style={{ background: s.bg, border: `1px solid ${s.border}`, color: s.color }}
       onMouseEnter={e => !disabled && (e.currentTarget.style.background = s.hover)}
       onMouseLeave={e => !disabled && (e.currentTarget.style.background = s.bg)}
@@ -619,7 +619,19 @@ export default function PointReview() {
           <div className="px-3 py-2.5 border-b" style={{ borderColor: 'var(--border)' }}>
             <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-3)', fontSize: 10 }}>Points · low confidence first</p>
           </div>
-          {points.map((p, i) => (
+          {points.map((p, i) => {
+            const conf = p.confidence;
+            const activeBg = conf >= 0.7
+              ? 'rgba(74,222,128,0.08)'
+              : conf >= 0.4
+              ? 'rgba(251,191,36,0.08)'
+              : 'rgba(248,113,113,0.08)';
+            const hoverBg = conf >= 0.7
+              ? 'rgba(74,222,128,0.04)'
+              : conf >= 0.4
+              ? 'rgba(251,191,36,0.04)'
+              : 'rgba(248,113,113,0.04)';
+            return (
             <button
               key={p.id}
               onClick={() => { if (!isTagging) setIdx(i); }}
@@ -627,9 +639,11 @@ export default function PointReview() {
               className="w-full text-left px-3 py-2.5 border-b transition-colors disabled:cursor-not-allowed"
               style={{
                 borderColor: 'var(--border)',
-                background: i === idx ? 'var(--surface)' : 'transparent',
+                background: i === idx ? activeBg : 'transparent',
                 borderLeft: i === idx ? '2px solid var(--cyan)' : '2px solid transparent',
               }}
+              onMouseEnter={e => { if (i !== idx) e.currentTarget.style.background = hoverBg; }}
+              onMouseLeave={e => { if (i !== idx) e.currentTarget.style.background = 'transparent'; }}
             >
               <div className="flex items-center justify-between mb-0.5">
                 <span className="text-xs font-medium" style={{ color: i === idx ? 'var(--text-1)' : 'var(--text-2)' }}>
@@ -641,11 +655,26 @@ export default function PointReview() {
                 {formatTime(p.startTime)} → {formatTime(p.endTime)}
               </div>
             </button>
-          ))}
+            );
+          })}
         </aside>
 
         {/* Video + Scrubber column */}
         <div className="flex-1 flex flex-col overflow-hidden">
+
+          {/* Key Guidance */}
+          <div className="shrink-0 px-5 py-3 border-b"
+            style={{ background: 'var(--bg-2)', borderColor: 'rgba(184,255,64,0.12)' }}>
+            <div className="flex items-center gap-3 mb-1.5">
+              <span className="uppercase tracking-widest font-semibold" style={{ fontSize: 10, color: 'var(--text-3)' }}>Key Guidance</span>
+              <span className="mono" style={{ fontSize: 11, color: 'var(--text-3)' }}>#{point.pointNumber}</span>
+              <span className="mono" style={{ fontSize: 11, color: 'var(--text-3)' }}>{point.duration.toFixed(1)}s</span>
+              <ConfidencePill value={point.confidence} />
+            </div>
+            <p className="text-xs leading-relaxed italic" style={{ color: 'var(--text-2)' }}>
+              {point.winnerDetection?.reason ?? 'Watch the clip and use your judgment.'}
+            </p>
+          </div>
 
           {/* Video */}
           <div className="flex-1 bg-black flex items-center justify-center relative overflow-hidden">
@@ -770,7 +799,7 @@ export default function PointReview() {
                           </span>
                           <span className="mono" style={{ color: 'var(--text-2)' }}>{Math.round((val as number) * 100)}%</span>
                         </div>
-                        <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--surface-3)' }}>
+                        <div className="h-[5px] rounded-full overflow-hidden" style={{ background: 'var(--surface-3)' }}>
                           <div className="h-full rounded-full transition-all duration-700"
                             style={{
                               width: `${(val as number) * 100}%`,
@@ -787,23 +816,27 @@ export default function PointReview() {
 
               {/* Winner detection preview */}
               {point.winnerDetection && (
-                <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
-                  <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--text-3)', fontSize: 10 }}>AI winner detection</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs" style={{ color: point.winnerDetection.needsReview ? 'var(--amber)' : 'var(--green)' }}>
+                <div className="px-4 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
+                  <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--text-3)', fontSize: 10 }}>AI Winner Selection</p>
+                  <div className="flex items-baseline gap-2 mb-1.5">
+                    <span className="text-sm font-semibold" style={{ color: point.winnerDetection.needsReview ? 'var(--amber)' : 'var(--green)' }}>
                       {point.winnerDetection.winner
                         ? (point.winnerDetection.winner === 'team1'
                           ? (players?.team1.player1 ?? 'Team 1')
                           : (players?.team2.player1 ?? 'Team 2'))
                         : '—'}
                     </span>
-                    <ConfidencePill value={point.winnerDetection.confidence} />
-                    {point.winnerDetection.needsReview && (
-                      <span className="text-xs" style={{ color: 'var(--amber)' }}>Review</span>
-                    )}
+                    <span className="mono font-bold" style={{ fontSize: 22, color: point.winnerDetection.needsReview ? 'var(--amber)' : 'var(--green)', lineHeight: 1 }}>
+                      {Math.round(point.winnerDetection.confidence * 100)}%
+                    </span>
                   </div>
+                  {point.winnerDetection.needsReview && (
+                    <span className="inline-block text-xs px-2 py-0.5 rounded mb-2" style={{ background: 'rgba(251,191,36,0.12)', color: 'var(--amber)', border: '1px solid rgba(251,191,36,0.3)' }}>
+                      Needs review
+                    </span>
+                  )}
                   {point.winnerDetection.reason && (
-                    <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--text-3)' }}>
+                    <p className="leading-relaxed" style={{ fontSize: 11, color: 'var(--text-3)' }}>
                       {point.winnerDetection.reason}
                     </p>
                   )}
