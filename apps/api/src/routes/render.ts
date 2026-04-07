@@ -193,10 +193,14 @@ async function runRender(
 
   const serveUrl = await getBundle();
 
+  // Use software rendering (swangle) — required for headless Docker environments
+  const chromiumOptions = { gl: 'swangle' as const };
+
   const composition = await selectComposition({
     serveUrl,
     id: compositionId,
     inputProps,
+    chromiumOptions,
   });
 
   const outputDir = path.join(STORAGE_PATH, 'renders');
@@ -212,6 +216,8 @@ async function runRender(
     codec: 'h264',
     outputLocation,
     inputProps,
+    chromiumOptions,
+    timeoutInMilliseconds: 120000,
     onProgress: async ({ progress }) => {
       await matchRef.update({
         renderProgress: Math.round(progress * 100),
