@@ -438,11 +438,22 @@ export default function PointReview() {
           return; // don't advance yet — tagging panel will advance
         }
       }
-      idx + 1 >= points.length ? setDone(true) : setIdx(i => i + 1);
+      if (idx + 1 >= points.length) {
+        // Mark match as ready for rendering
+        if (match) {
+          await updateDoc(doc(db, 'matches', match.id ?? matchId!), {
+            status: 'reviewing',
+            updatedAt: serverTimestamp(),
+          });
+        }
+        setDone(true);
+      } else {
+        setIdx(i => i + 1);
+      }
     } finally {
       setSubmitting(false);
     }
-  }, [points, idx, profile, submitting, match, openTagging]);
+  }, [points, idx, profile, submitting, match, matchId, openTagging]);
 
   const saveTag = useCallback(async () => {
     if (!taggingPoint || !profile || !tagDraft.winner || !tagDraft.howWon || savingTag) return;
@@ -490,11 +501,21 @@ export default function PointReview() {
 
       setTaggingPoint(null);
       setPendingCorrected(null);
-      idx + 1 >= points.length ? setDone(true) : setIdx(i => i + 1);
+      if (idx + 1 >= points.length) {
+        if (match) {
+          await updateDoc(doc(db, 'matches', match.id ?? matchId!), {
+            status: 'reviewing',
+            updatedAt: serverTimestamp(),
+          });
+        }
+        setDone(true);
+      } else {
+        setIdx(i => i + 1);
+      }
     } finally {
       setSavingTag(false);
     }
-  }, [taggingPoint, profile, tagDraft, score, players, idx, points.length]);
+  }, [taggingPoint, profile, tagDraft, score, players, idx, points.length, match, matchId]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -532,7 +553,12 @@ export default function PointReview() {
         </div>
         <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--text-1)' }}>Review complete</h2>
         <p className="text-sm mb-6" style={{ color: 'var(--text-2)' }}>All pending points reviewed — great work.</p>
-        <button onClick={() => navigate('/')} className="btn-cyan px-6 py-2.5 text-sm">← Back to queue</button>
+        <div className="flex items-center justify-center gap-3">
+          <button onClick={() => navigate(`/match/${matchId}`)} className="btn-cyan px-6 py-2.5 text-sm">
+            Generate highlight →
+          </button>
+          <button onClick={() => navigate('/')} className="btn-ghost px-5 py-2.5 text-sm">← Queue</button>
+        </div>
       </div>
     </div>
   );

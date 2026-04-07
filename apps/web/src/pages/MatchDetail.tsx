@@ -124,7 +124,7 @@ export default function MatchDetail() {
 
   const isRendering = match.status === 'rendering';
   const isComplete = match.status === 'complete';
-  const canRender = ['reviewing', 'approved', 'complete'].includes(match.status) && !isRendering;
+  const canRender = ['detected', 'reviewing', 'approved', 'complete'].includes(match.status) && !isRendering;
   const progress = match.renderProgress ?? 0;
 
   const t1 = match.players ? `${match.players.team1.player1} / ${match.players.team1.player2}` : 'Team 1';
