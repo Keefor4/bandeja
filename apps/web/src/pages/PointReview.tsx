@@ -50,8 +50,8 @@ function ActionButton({
   const styles = {
     approve: { bg: 'rgba(0,200,83,0.08)', border: 'rgba(0,200,83,0.25)', color: 'var(--green)',  hover: 'rgba(0,200,83,0.15)' },
     reject:  { bg: 'rgba(255,61,87,0.08)',  border: 'rgba(255,61,87,0.25)',  color: 'var(--red)',    hover: 'rgba(255,61,87,0.15)' },
-    adjust:  { bg: 'rgba(0,229,255,0.06)',  border: 'rgba(0,229,255,0.2)',   color: 'var(--cyan)',   hover: 'rgba(0,229,255,0.12)' },
-    active:  { bg: 'rgba(0,229,255,0.12)',  border: 'rgba(0,229,255,0.4)',   color: 'var(--cyan)',   hover: 'rgba(0,229,255,0.18)' },
+    adjust:  { bg: 'rgba(184,255,64,0.06)',  border: 'rgba(184,255,64,0.2)',   color: 'var(--cyan)',   hover: 'rgba(184,255,64,0.12)' },
+    active:  { bg: 'rgba(184,255,64,0.12)',  border: 'rgba(184,255,64,0.4)',   color: 'var(--cyan)',   hover: 'rgba(184,255,64,0.18)' },
     skip:    { bg: 'transparent',           border: 'var(--border)',         color: 'var(--text-3)', hover: 'var(--surface-2)' },
   };
   const s = styles[variant];
@@ -146,10 +146,10 @@ function TagPanel({
                   className="px-3 py-2.5 rounded-lg text-xs font-medium transition-all duration-150"
                   style={{
                     background: isSelected
-                      ? (t === 'team1' ? 'rgba(0,229,255,0.12)' : 'rgba(255,179,0,0.12)')
+                      ? (t === 'team1' ? 'rgba(184,255,64,0.1)' : 'rgba(251,191,36,0.12)')
                       : 'var(--surface)',
                     border: isSelected
-                      ? (t === 'team1' ? '1px solid rgba(0,229,255,0.4)' : '1px solid rgba(255,179,0,0.4)')
+                      ? (t === 'team1' ? '1px solid rgba(184,255,64,0.35)' : '1px solid rgba(251,191,36,0.4)')
                       : '1px solid var(--border)',
                     color: isSelected
                       ? (t === 'team1' ? 'var(--cyan)' : 'var(--amber)')
@@ -173,8 +173,8 @@ function TagPanel({
                 onClick={() => onDraftChange({ howWon: key })}
                 className="px-2.5 py-2 rounded-lg text-xs font-medium text-left transition-all duration-150"
                 style={{
-                  background: draft.howWon === key ? 'rgba(0,229,255,0.1)' : 'var(--surface)',
-                  border: draft.howWon === key ? '1px solid rgba(0,229,255,0.35)' : '1px solid var(--border)',
+                  background: draft.howWon === key ? 'rgba(184,255,64,0.08)' : 'var(--surface)',
+                  border: draft.howWon === key ? '1px solid rgba(184,255,64,0.32)' : '1px solid var(--border)',
                   color: draft.howWon === key ? 'var(--cyan)' : 'var(--text-2)',
                 }}
               >
@@ -199,8 +199,8 @@ function TagPanel({
                     onClick={() => onDraftChange({ shotType: draft.shotType === shot ? null : shot })}
                     className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150"
                     style={{
-                      background: draft.shotType === shot ? 'rgba(0,229,255,0.1)' : 'var(--surface)',
-                      border: draft.shotType === shot ? '1px solid rgba(0,229,255,0.35)' : '1px solid var(--border)',
+                      background: draft.shotType === shot ? 'rgba(184,255,64,0.08)' : 'var(--surface)',
+                      border: draft.shotType === shot ? '1px solid rgba(184,255,64,0.32)' : '1px solid var(--border)',
                       color: draft.shotType === shot ? 'var(--cyan)' : 'var(--text-2)',
                     }}
                   >
@@ -633,7 +633,7 @@ export default function PointReview() {
           {/* Overlay: point info */}
           <div className="absolute top-3 left-3 flex items-center gap-2">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs"
-              style={{ background: 'rgba(8,11,15,0.85)', backdropFilter: 'blur(8px)', border: '1px solid var(--border)' }}>
+              style={{ background: 'rgba(9,9,10,0.88)', backdropFilter: 'blur(8px)', border: '1px solid var(--border)' }}>
               <span style={{ color: 'var(--text-3)' }}>Point #{point.pointNumber}</span>
               <span style={{ color: 'var(--border)' }}>·</span>
               <span className="mono" style={{ color: 'var(--text-2)' }}>{point.duration.toFixed(1)}s</span>
@@ -642,7 +642,7 @@ export default function PointReview() {
             </div>
             {adjustMode && (
               <div className="px-2.5 py-1.5 rounded-lg text-xs font-medium"
-                style={{ background: 'var(--cyan-glow)', border: '1px solid rgba(0,229,255,0.4)', color: 'var(--cyan)' }}>
+                style={{ background: 'var(--cyan-glow)', border: '1px solid rgba(184,255,64,0.4)', color: 'var(--cyan)' }}>
                 Adjust mode
               </div>
             )}
@@ -731,7 +731,7 @@ export default function PointReview() {
 
               {/* Adjust sliders */}
               {adjustMode && (
-                <div className="px-4 py-4 border-b" style={{ borderColor: 'rgba(0,229,255,0.15)', background: 'rgba(0,229,255,0.04)' }}>
+                <div className="px-4 py-4 border-b" style={{ borderColor: 'rgba(184,255,64,0.15)', background: 'rgba(184,255,64,0.04)' }}>
                   <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: 'var(--cyan)', fontSize: 10 }}>Adjust boundaries</p>
                   <div className="space-y-4">
                     <div>

@@ -195,7 +195,7 @@ export default function PlayerIdentificationModal({ matchId, onClose, onSaved }:
                         border: '1px solid var(--border)',
                         color: 'var(--text-1)',
                       }}
-                      onFocus={e => e.currentTarget.style.borderColor = 'rgba(0,229,255,0.5)'}
+                      onFocus={e => e.currentTarget.style.borderColor = 'rgba(184,255,64,0.5)'}
                       onBlur={e => e.currentTarget.style.borderColor = 'var(--border)'}
                     />
                   </div>

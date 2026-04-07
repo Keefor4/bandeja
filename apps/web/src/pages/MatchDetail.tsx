@@ -135,7 +135,7 @@ export default function MatchDetail() {
 
       {/* Header */}
       <header className="sticky top-0 z-20 px-6 h-14 flex items-center gap-4 border-b"
-        style={{ background: 'rgba(6,9,14,0.92)', backdropFilter: 'blur(16px)', borderColor: 'var(--border)' }}>
+        style={{ background: 'rgba(9,9,10,0.92)', backdropFilter: 'blur(16px)', borderColor: 'var(--border)' }}>
         <button onClick={() => navigate('/')} className="btn-ghost px-3 py-1.5 text-xs shrink-0">
           <svg width="12" height="10" viewBox="0 0 12 10" fill="none" style={{ marginRight: 4 }}>
             <path d="M11 5H1M1 5L5 1M1 5L5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>

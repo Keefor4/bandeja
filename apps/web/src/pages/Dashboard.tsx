@@ -100,7 +100,7 @@ function MatchCard({
                   {STATUS_LABEL[match.status] ?? match.status}
                 </span>
                 {isMine && (
-                  <span className="badge" style={{ background: 'var(--cyan-bg)', color: 'var(--cyan)', borderColor: 'rgba(0,229,255,0.22)' }}>
+                  <span className="badge" style={{ background: 'var(--cyan-bg)', color: 'var(--cyan)', borderColor: 'rgba(184,255,64,0.22)' }}>
                     Your review
                   </span>
                 )}
@@ -236,11 +236,17 @@ export default function Dashboard() {
         <div className="px-5 pt-6 pb-5 border-b" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center gap-2.5 mb-1">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: 'var(--cyan-bg)', border: '1px solid rgba(0,229,255,0.2)' }}>
-              <svg width="16" height="16" viewBox="0 0 28 28" fill="none">
-                <circle cx="11" cy="11" r="8" stroke="var(--cyan)" strokeWidth="2.2"/>
-                <line x1="3.5" y1="3.5" x2="8" y2="8" stroke="var(--cyan)" strokeWidth="2" strokeLinecap="round"/>
-                <line x1="14" y1="14" x2="24" y2="24" stroke="var(--cyan)" strokeWidth="2.5" strokeLinecap="round"/>
+              style={{ background: 'var(--cyan-bg)', border: '1px solid rgba(184,255,64,0.2)' }}>
+              <svg width="14" height="17" viewBox="0 0 20 24" fill="none">
+                <ellipse cx="10" cy="9" rx="8.2" ry="8.5" stroke="var(--cyan)" strokeWidth="1.6"/>
+                <circle cx="7.5" cy="7.5" r="0.9" fill="var(--cyan)" fillOpacity="0.5"/>
+                <circle cx="10" cy="7"   r="0.9" fill="var(--cyan)" fillOpacity="0.5"/>
+                <circle cx="12.5" cy="7.5" r="0.9" fill="var(--cyan)" fillOpacity="0.5"/>
+                <circle cx="7.5" cy="10.5" r="0.9" fill="var(--cyan)" fillOpacity="0.5"/>
+                <circle cx="10" cy="11"  r="0.9" fill="var(--cyan)" fillOpacity="0.5"/>
+                <circle cx="12.5" cy="10.5" r="0.9" fill="var(--cyan)" fillOpacity="0.5"/>
+                <path d="M7 17.5h6"  stroke="var(--cyan)" strokeWidth="1.3" strokeLinecap="round"/>
+                <path d="M10 17.5V22" stroke="var(--cyan)" strokeWidth="2.2" strokeLinecap="round"/>
               </svg>
             </div>
             <div>
@@ -313,7 +319,7 @@ export default function Dashboard() {
         {/* Top bar */}
         <div className="sticky top-0 z-10 px-7 py-4 flex items-center justify-between"
           style={{
-            background: 'rgba(6,9,14,0.88)',
+            background: 'rgba(9,9,10,0.88)',
             backdropFilter: 'blur(14px)',
             borderBottom: '1px solid var(--border)',
           }}>

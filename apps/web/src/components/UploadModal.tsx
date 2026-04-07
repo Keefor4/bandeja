@@ -83,7 +83,7 @@ export default function UploadModal({ onClose, onSuccess }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(8,11,15,0.85)', backdropFilter: 'blur(8px)' }}
+      style={{ background: 'rgba(9,9,10,0.85)', backdropFilter: 'blur(8px)' }}
       onClick={e => e.target === e.currentTarget && state !== 'uploading' && onClose()}>
 
       <div className="w-full max-w-md fade-up" style={{ background: 'var(--surface)', border: '1px solid var(--border-2)', borderRadius: 16, boxShadow: '0 32px 80px rgba(0,0,0,0.5)' }}>
@@ -112,8 +112,8 @@ export default function UploadModal({ onClose, onSuccess }: Props) {
             onDrop={handleDrop}
             className="rounded-xl border-2 border-dashed transition-all duration-200 flex flex-col items-center justify-center py-8 cursor-pointer"
             style={{
-              borderColor: dragging ? 'var(--cyan)' : file ? 'rgba(0,200,83,0.4)' : 'var(--border-2)',
-              background: dragging ? 'var(--cyan-glow)' : file ? 'rgba(0,200,83,0.04)' : 'var(--bg-2)',
+              borderColor: dragging ? 'var(--cyan)' : file ? 'rgba(74,222,128,0.4)' : 'var(--border-2)',
+              background: dragging ? 'var(--cyan-glow)' : file ? 'rgba(74,222,128,0.04)' : 'var(--bg-2)',
             }}
           >
             {file ? (
@@ -165,7 +165,7 @@ export default function UploadModal({ onClose, onSuccess }: Props) {
               disabled={state === 'uploading'}
               className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-all disabled:opacity-50"
               style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', color: 'var(--text-1)' }}
-              onFocus={e => e.target.style.borderColor = 'rgba(0,229,255,0.5)'}
+              onFocus={e => e.target.style.borderColor = 'rgba(184,255,64,0.5)'}
               onBlur={e => e.target.style.borderColor = 'var(--border)'}
             />
           </div>
@@ -179,7 +179,7 @@ export default function UploadModal({ onClose, onSuccess }: Props) {
               </div>
               <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-3)' }}>
                 <div className="h-full rounded-full transition-all duration-300"
-                  style={{ width: `${progress}%`, background: 'var(--cyan)', boxShadow: '0 0 8px rgba(0,229,255,0.4)' }} />
+                  style={{ width: `${progress}%`, background: 'var(--cyan)', boxShadow: '0 0 8px rgba(184,255,64,0.4)' }} />
               </div>
               <p className="text-xs mt-2" style={{ color: 'var(--text-3)' }}>
                 Detection will start automatically after upload completes.
