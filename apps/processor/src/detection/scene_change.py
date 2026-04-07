@@ -11,41 +11,41 @@ class Segment:
     score: float       # 0-1 confidence this is an active segment
 
 
-def detect_scene_changes(video_path: str, threshold: float = 30.0, sample_every_n: int = 15) -> list[Segment]:
+def detect_scene_changes(video_path: str, threshold: float = 30.0, sample_interval: float = 1.0) -> list[Segment]:
     """
-    Detect scene changes by analyzing frame-to-frame difference.
-    Samples every N frames (default: every 15 frames = ~0.5s at 30fps).
-    Returns candidate segments (gaps between major changes = dead time).
+    Detect scene changes by seeking to sample frames every N seconds.
+    Much faster than reading every frame — seeks directly to timestamps.
     """
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         raise ValueError(f"Cannot open video: {video_path}")
 
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
-    segments: list[Segment] = []
-    prev_frame = None
-    change_times: list[float] = [0.0]
+    total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    total_duration = total_frames / fps
+    print(f"  Video: {total_duration:.0f}s at {fps:.1f}fps, sampling every {sample_interval}s")
 
-    frame_idx = 0
-    while True:
+    change_times: list[float] = [0.0]
+    prev_frame = None
+    t = 0.0
+
+    while t < total_duration:
+        cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
         ret, frame = cap.read()
         if not ret:
-            break
+            t += sample_interval
+            continue
 
-        if frame_idx % sample_every_n == 0:
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            gray = cv2.resize(gray, (320, 180))  # downsample for speed
-            if prev_frame is not None:
-                diff = cv2.absdiff(prev_frame, gray)
-                mean_diff = float(np.mean(diff))
-                if mean_diff > threshold:
-                    timestamp = frame_idx / fps
-                    change_times.append(timestamp)
-            prev_frame = gray
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        gray = cv2.resize(gray, (320, 180))
+        if prev_frame is not None:
+            diff = cv2.absdiff(prev_frame, gray)
+            mean_diff = float(np.mean(diff))
+            if mean_diff > threshold:
+                change_times.append(t)
+        prev_frame = gray
+        t += sample_interval
 
-        frame_idx += 1
-
-    total_duration = frame_idx / fps
     change_times.append(total_duration)
     cap.release()
 
