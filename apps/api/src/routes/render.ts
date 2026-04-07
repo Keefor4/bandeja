@@ -1,5 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Router } from 'express';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -10,6 +11,24 @@ export const renderRoutes: Router = Router();
 
 const STORAGE_PATH = process.env.BANDEJA_STORAGE_PATH ?? 'C:/Users/Tomer/Desktop/Bandeja video';
 const API_BASE = process.env.API_BASE_URL ?? 'http://localhost:4000';
+
+/** Extract a short clip from a video using FFmpeg (fast input-seek, stream copy). */
+function extractClip(videoPath: string, startTime: number, duration: number, outPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const args = [
+      '-y',
+      '-ss', String(startTime),
+      '-i', videoPath,
+      '-t', String(duration),
+      '-c', 'copy',
+      '-avoid_negative_ts', 'make_zero',
+      outPath,
+    ];
+    const proc = spawn('ffmpeg', args, { stdio: 'pipe' });
+    proc.on('close', code => code === 0 ? resolve() : reject(new Error(`ffmpeg exited ${code}`)));
+    proc.on('error', reject);
+  });
+}
 
 // Cache the webpack bundle URL so we only bundle once per API process
 let bundleCache: string | null = null;
@@ -117,18 +136,28 @@ async function runRender(
       .sort((a, b) => a.pointNumber - b.pointNumber);
   }
 
-  // Use localhost:4000 — api:4000 doesn't resolve from within the same container
-  const videoSrc = `http://localhost:4000/storage/${match.videoPath}`;
   const uploadedAt = match.uploadedAt?.toDate?.() ?? new Date();
   const matchDate = uploadedAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-  const pointData = points.map(p => {
+  // Pre-extract each point as a short clip — avoids deep seeking in a large file
+  const clipsDir = path.join(STORAGE_PATH, 'renders', 'clips', matchId);
+  await fs.mkdir(clipsDir, { recursive: true });
+  const sourceVideoPath = path.join(STORAGE_PATH, match.videoPath);
+
+  console.log(`[Render] Extracting ${points.length} clips from source video…`);
+  const pointData = await Promise.all(points.map(async (p, i) => {
     const s = statsMap[p.id];
+    const startTime = p.correctedStartTime ?? p.startTime;
+    const endTime   = p.correctedEndTime ?? p.endTime;
+    const duration  = endTime - startTime;
+    const clipFile  = path.join(clipsDir, `clip_${i}.mp4`);
+    await extractClip(sourceVideoPath, startTime, duration, clipFile);
     return {
       id: p.id,
-      videoSrc,
-      startTime: p.correctedStartTime ?? p.startTime,
-      endTime: p.correctedEndTime ?? p.endTime,
+      // Each clip starts at 0:00 — no deep seeking needed
+      videoSrc: `http://localhost:4000/storage/renders/clips/${matchId}/clip_${i}.mp4`,
+      startTime: 0,
+      endTime: duration,
       pointNumber: p.pointNumber,
       totalPoints: points.length,
       winner: s?.winner ?? null,
@@ -139,7 +168,8 @@ async function runRender(
       howWon: s?.howWon ?? '',
       shotType: s?.finishingShot ?? '',
     };
-  });
+  }));
+  console.log(`[Render] All clips extracted`);
 
   const isPlayerReel = Boolean(options.playerHighlight);
   const compositionId = isPlayerReel ? 'PlayerHighlight' : 'HighlightReel';
@@ -197,6 +227,9 @@ async function runRender(
     renderProgress: 100,
     updatedAt: FieldValue.serverTimestamp(),
   });
+
+  // Clean up temp clips
+  await fs.rm(clipsDir, { recursive: true, force: true }).catch(() => {});
 
   console.log(`[Render] ${matchId} → ${outputLocation}`);
 }
