@@ -9,7 +9,8 @@ export type MatchStatus =
   | 'reviewing'
   | 'approved'
   | 'rendering'
-  | 'complete';
+  | 'complete'
+  | 'error';
 
 export interface Match {
   id: string;
