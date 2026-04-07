@@ -20,7 +20,7 @@ def analyze_motion(video_path: str, segments: list[Segment]) -> list[Segment]:
     for seg in segments:
         start_frame = int(seg.start_time * fps)
         end_frame = int(seg.end_time * fps)
-        sample_count = min(30, end_frame - start_frame)
+        sample_count = min(5, end_frame - start_frame)
 
         if sample_count < 2:
             results.append(Segment(seg.start_time, seg.end_time, 0.0))
