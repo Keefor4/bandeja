@@ -1,4 +1,5 @@
-import { Composition } from 'remotion';
+import React from 'react';
+import { Composition, registerRoot } from 'remotion';
 import { HighlightReel } from './compositions/HighlightReel';
 import { PlayerHighlight } from './compositions/PlayerHighlight';
 import { calculateHighlightFrames, calculatePlayerHighlightFrames } from './utils';
@@ -24,7 +25,7 @@ const defaultPlayerProps: PlayerHighlightProps = {
   includeMusic: false,
 };
 
-export const RemotionRoot: React.FC = () => (
+const RemotionRoot: React.FC = () => (
   <>
     <Composition
       id="HighlightReel"
@@ -52,3 +53,5 @@ export const RemotionRoot: React.FC = () => (
     />
   </>
 );
+
+registerRoot(RemotionRoot);
