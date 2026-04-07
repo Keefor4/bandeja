@@ -44,6 +44,8 @@ function MatchCard({
   const progress = total > 0 ? Math.round((approved / total) * 100) : 0;
   const isComplete = match.status === 'complete';
   const isRendering = match.status === 'rendering';
+  const isProcessing = match.status === 'processing' || match.status === 'uploaded';
+  const processingProgress = match.processingProgress ?? 0;
   const accent = STATUS_ACCENT[match.status] ?? 'var(--border-2)';
 
   return (
@@ -107,6 +109,10 @@ function MatchCard({
 
             {isTaken ? (
               <span className="text-xs shrink-0 mt-0.5" style={{ color: 'var(--text-3)' }}>Taken</span>
+            ) : isProcessing ? (
+              <span className="text-xs shrink-0 mt-0.5 flex items-center gap-1.5" style={{ color: 'var(--amber)' }}>
+                <div className="spinner" style={{ color: 'var(--amber)', width: 12, height: 12 }} /> Detecting…
+              </span>
             ) : (isComplete || isRendering) ? (
               <button onClick={onView} className="btn-ghost shrink-0 px-3.5 py-2">
                 {isRendering ? (
@@ -147,8 +153,19 @@ function MatchCard({
             )}
           </div>
 
-          {/* Progress bar */}
-          {total > 0 && !isComplete && (
+          {/* Processing progress bar */}
+          {isProcessing && (
+            <div className="flex items-center gap-2.5 mt-3">
+              <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: 'var(--surface-3)' }}>
+                <div className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${processingProgress}%`, background: 'var(--amber)' }} />
+              </div>
+              <span className="text-xs mono shrink-0" style={{ color: 'var(--amber)', fontSize: 11 }}>{processingProgress}%</span>
+            </div>
+          )}
+
+          {/* Review progress bar */}
+          {total > 0 && !isComplete && !isProcessing && (
             <div className="flex items-center gap-2.5 mt-3">
               <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: 'var(--surface-3)' }}>
                 <div className="h-full rounded-full transition-all duration-700"
@@ -173,7 +190,7 @@ export default function Dashboard() {
   useEffect(() => {
     const q = query(
       collection(db, 'matches'),
-      where('status', 'in', ['detected', 'reviewing', 'rendering', 'complete']),
+      where('status', 'in', ['uploaded', 'processing', 'detected', 'reviewing', 'rendering', 'complete']),
       orderBy('createdAt', 'desc')
     );
     return onSnapshot(q, snap => {
