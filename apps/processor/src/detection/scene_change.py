@@ -1,6 +1,6 @@
-"""Stage 1: Scene change detection using OpenCV frame differencing."""
-import cv2
-import numpy as np
+"""Stage 1: Scene change detection using FFmpeg scene filter."""
+import subprocess
+import re
 from dataclasses import dataclass
 
 
@@ -11,51 +11,52 @@ class Segment:
     score: float       # 0-1 confidence this is an active segment
 
 
-def detect_scene_changes(video_path: str, threshold: float = 30.0, sample_interval: float = 1.0) -> list[Segment]:
+def detect_scene_changes(video_path: str, threshold: float = 0.3) -> list[Segment]:
     """
-    Detect scene changes by seeking to sample frames every N seconds.
-    Much faster than reading every frame — seeks directly to timestamps.
+    Detect scene changes using FFmpeg's built-in scene detection filter.
+    Much faster than OpenCV frame-by-frame — FFmpeg processes at full speed.
+    threshold: 0.0-1.0, higher = fewer scene changes detected (default 0.3)
     """
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        raise ValueError(f"Cannot open video: {video_path}")
+    print(f"  Running FFmpeg scene detection (threshold={threshold})...")
 
-    fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
-    total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-    total_duration = total_frames / fps
-    print(f"  Video: {total_duration:.0f}s at {fps:.1f}fps, sampling every {sample_interval}s")
+    result = subprocess.run(
+        [
+            "ffmpeg", "-i", video_path,
+            "-vf", f"select='gt(scene,{threshold})',showinfo",
+            "-vsync", "vfr",
+            "-f", "null", "-",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=600,
+    )
 
+    # FFmpeg outputs showinfo to stderr
+    output = result.stderr
+
+    # Parse timestamps from showinfo output: "pts_time:12.345"
     change_times: list[float] = [0.0]
-    prev_frame = None
-    t = 0.0
+    for match in re.finditer(r'pts_time:([\d.]+)', output):
+        t = float(match.group(1))
+        change_times.append(t)
 
-    while t < total_duration:
-        cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
-        ret, frame = cap.read()
-        if not ret:
-            t += sample_interval
-            continue
-
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        gray = cv2.resize(gray, (320, 180))
-        if prev_frame is not None:
-            diff = cv2.absdiff(prev_frame, gray)
-            mean_diff = float(np.mean(diff))
-            if mean_diff > threshold:
-                change_times.append(t)
-        prev_frame = gray
-        t += sample_interval
+    # Get total duration
+    duration_match = re.search(r'Duration:\s*(\d+):(\d+):([\d.]+)', output)
+    if duration_match:
+        h, m, s = duration_match.groups()
+        total_duration = int(h) * 3600 + int(m) * 60 + float(s)
+    else:
+        total_duration = change_times[-1] + 30 if len(change_times) > 1 else 3600
 
     change_times.append(total_duration)
-    cap.release()
+    print(f"  Found {len(change_times) - 2} scene changes, total duration: {total_duration:.0f}s")
 
-    # Convert change times to segments
+    segments = []
     for i in range(len(change_times) - 1):
         start = change_times[i]
         end = change_times[i + 1]
         duration = end - start
-        # Short segments after a scene change are likely active play
-        score = min(1.0, duration / 30.0)  # normalize: 30s+ = full confidence
+        score = min(1.0, duration / 30.0)
         segments.append(Segment(start_time=start, end_time=end, score=score))
 
     return segments
