@@ -124,7 +124,8 @@ export default function MatchDetail() {
 
   const isRendering = match.status === 'rendering';
   const isComplete = match.status === 'complete';
-  const canRender = ['detected', 'reviewing', 'approved', 'complete'].includes(match.status) && !isRendering;
+  const isError = match.status === 'error';
+  const canRender = ['detected', 'reviewing', 'approved', 'complete', 'error'].includes(match.status) && !isRendering;
   const progress = match.renderProgress ?? 0;
 
   const t1 = match.players ? `${match.players.team1.player1} / ${match.players.team1.player2}` : 'Team 1';
@@ -172,6 +173,18 @@ export default function MatchDetail() {
             </div>
           </div>
 
+          {/* Error message */}
+          {isError && (
+            <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+              <div className="rounded-lg px-3 py-2.5" style={{ background: 'rgba(255,59,48,0.08)', border: '1px solid rgba(255,59,48,0.25)' }}>
+                <p className="text-xs font-semibold mb-0.5" style={{ color: 'var(--red, #ff3b30)' }}>Processing error</p>
+                <p className="text-xs font-mono break-all" style={{ color: 'var(--text-3)' }}>
+                  {(match as any).renderError ?? (match as any).errorMessage ?? 'Unknown error — check server logs.'}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Render progress bar */}
           {isRendering && (
             <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
@@ -215,7 +228,7 @@ export default function MatchDetail() {
             <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
               {!showOptions ? (
                 <button onClick={() => setShowOptions(true)} className="btn-cyan px-5 py-2 text-xs">
-                  {isComplete ? 'Re-render highlight' : 'Generate highlight →'}
+                  {isComplete ? 'Re-render highlight' : isError ? 'Retry render →' : 'Generate highlight →'}
                 </button>
               ) : (
                 <div className="rounded-xl p-4 space-y-4" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
