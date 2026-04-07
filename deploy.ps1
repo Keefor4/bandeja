@@ -61,8 +61,10 @@ Info "Building frontend..."
 Copy-Item ".env" "apps\web\.env.local" -Force
 Set-Location "apps\web"
 pnpm build
+$buildExit = $LASTEXITCODE
 Set-Location "..\..\"
 Remove-Item "apps\web\.env.local" -Force -ErrorAction SilentlyContinue
+if ($buildExit -ne 0) { Fail "Frontend build failed (exit $buildExit) — fix TypeScript errors above and retry." }
 Success "Frontend built -> apps/web/dist/"
 
 # ── Start Docker containers ────────────────────────────────────────────────────

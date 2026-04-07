@@ -27,7 +27,7 @@ export default function PlayerIdentificationModal({ matchId, onClose, onSaved }:
   const [frameError, setFrameError] = useState('');
   const [names, setNames] = useState({ team1: { player1: '', player2: '' }, team2: { player1: '', player2: '' } });
   const [saving, setSaving] = useState(false);
-  const [activeFrame, setActiveFrame] = useState(0);
+  const [activeFrame] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
