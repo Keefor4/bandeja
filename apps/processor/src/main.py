@@ -68,9 +68,14 @@ def health():
 @app.post("/extract-players")
 async def extract_players(req: ExtractPlayersRequest):
     """
-    Extract 4 frames from the first ~30s of a match video.
-    Samples one frame per ~7 seconds so you get good coverage of initial court positions.
-    Returns base64 JPEG strings for each frame.
+    Extract 4 frames that show all players on court.
+
+    Strategy:
+    - Skip the first 10 minutes (warmup, intros, dead time at the start).
+    - Scan 20 candidate frames across a 5-minute window starting at 10 min.
+    - Score each frame using HOG person detection — prefer frames with 4 people.
+    - Return the 4 best frames spaced at least 5 seconds apart.
+    - Falls back to evenly-spaced frames if HOG finds nobody (e.g. overhead camera).
     """
     import cv2
     import base64
@@ -80,21 +85,65 @@ async def extract_players(req: ExtractPlayersRequest):
         return {"error": "Could not open video", "frames": []}
 
     fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
-    # Sample at 5s, 12s, 20s, 28s — these tend to show players at court positions
-    sample_times = [5.0, 12.0, 20.0, 28.0]
-    frames_b64 = []
+    total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+    total_duration = total_frames / fps if total_frames > 0 else 3600.0
 
-    for t in sample_times:
+    # Start at 10 minutes in (or 10% of video, minimum 60s)
+    start_time = max(60.0, min(600.0, total_duration * 0.10))
+    # Search window: 5 minutes past start, capped at 80% of video
+    end_time = min(total_duration * 0.80, start_time + 300.0)
+    if end_time <= start_time:
+        end_time = max(start_time + 10.0, total_duration - 10.0)
+
+    # HOG person detector (built into OpenCV, no external weights needed)
+    hog = cv2.HOGDescriptor()
+    hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+
+    num_candidates = 20
+    step = (end_time - start_time) / max(num_candidates - 1, 1)
+    candidate_times = [start_time + step * i for i in range(num_candidates)]
+
+    scored: list[tuple[int, float, str]] = []  # (person_count, timestamp, b64)
+
+    for t in candidate_times:
         cap.set(cv2.CAP_PROP_POS_FRAMES, int(t * fps))
         ret, frame = cap.read()
         if not ret:
             continue
-        frame = cv2.resize(frame, (1280, 720))
-        _, buf = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
-        frames_b64.append(base64.b64encode(buf.tobytes()).decode('utf-8'))
+
+        frame_display = cv2.resize(frame, (1280, 720))
+
+        # Run HOG on a 640×360 thumbnail — fast and accurate enough
+        small = cv2.resize(frame, (640, 360))
+        rects, _ = hog.detectMultiScale(
+            small, winStride=(8, 8), padding=(4, 4), scale=1.05,
+        )
+        person_count = len(rects)
+
+        _, buf = cv2.imencode('.jpg', frame_display, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        b64 = base64.b64encode(buf.tobytes()).decode('utf-8')
+        scored.append((person_count, t, b64))
 
     cap.release()
-    return {"frames": frames_b64}
+
+    # Sort by person count descending (most players visible first)
+    scored.sort(key=lambda x: -x[0])
+
+    # Pick 4 frames that are each at least 5 seconds apart
+    selected_b64: list[str] = []
+    used_times: list[float] = []
+    for count, t, b64 in scored:
+        if all(abs(t - ut) >= 5.0 for ut in used_times):
+            selected_b64.append(b64)
+            used_times.append(t)
+        if len(selected_b64) == 4:
+            break
+
+    # Fallback: HOG found nobody (overhead camera / unusual angle) — return evenly spaced
+    if not selected_b64:
+        selected_b64 = [s[2] for s in scored[:4]]
+
+    return {"frames": selected_b64}
 
 
 @app.post("/process", response_model=ProcessResponse)
