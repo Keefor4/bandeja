@@ -152,9 +152,16 @@ function MatchCard({
                   <><div className="spinner" style={{ color: 'var(--amber)', width: 12, height: 12 }} /> Rendering</>
                 ) : 'View →'}
               </button>
+            ) : isMine ? (
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={onView} className="btn-ghost px-3.5 py-2 text-xs">Highlight →</button>
+                <button onClick={onClaim} disabled={claiming} className="btn-cyan px-4 py-2">
+                  {claiming ? <><div className="spinner" /> Loading</> : 'Continue →'}
+                </button>
+              </div>
             ) : (
               <button onClick={onClaim} disabled={claiming} className="btn-cyan shrink-0 px-4 py-2">
-                {claiming ? <><div className="spinner" /> Loading</> : isMine ? 'Continue →' : 'Review →'}
+                {claiming ? <><div className="spinner" /> Loading</> : 'Review →'}
               </button>
             )}
           </div>
@@ -238,19 +245,23 @@ export default function Dashboard() {
     });
   }, [profile]);
 
-  const claimAndReview = async (matchId: string) => {
+  const claimAndReview = async (matchId: string, alreadyMine: boolean) => {
     setClaiming(matchId);
     try {
-      await updateDoc(doc(db, 'matches', matchId), {
-        claimedBy: profile?.uid,
-        claimedAt: serverTimestamp(),
-        status: 'reviewing',
-        updatedAt: serverTimestamp(),
-      });
-      navigate(`/review/${matchId}`);
+      if (!alreadyMine) {
+        await updateDoc(doc(db, 'matches', matchId), {
+          claimedBy: profile?.uid,
+          claimedAt: serverTimestamp(),
+          status: 'reviewing',
+          updatedAt: serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      console.warn('[claim] Firestore update failed, navigating anyway', e);
     } finally {
       setClaiming(null);
     }
+    navigate(`/review/${matchId}`);
   };
 
   const pending = matches.filter(m => !(m as any).claimedBy || (m as any).claimedBy === profile?.uid);
@@ -409,7 +420,7 @@ export default function Dashboard() {
                 <div key={match.id} style={{ animationDelay: `${i * 45}ms` }}>
                   <MatchCard
                     match={match}
-                    onClaim={() => claimAndReview(match.id)}
+                    onClaim={() => claimAndReview(match.id, (match as any).claimedBy === profile?.uid)}
                     onView={() => navigate(`/match/${match.id}`)}
                     claiming={claiming === match.id}
                     isMine={(match as any).claimedBy === profile?.uid}
