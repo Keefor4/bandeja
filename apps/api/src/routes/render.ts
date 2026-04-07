@@ -117,9 +117,8 @@ async function runRender(
       .sort((a, b) => a.pointNumber - b.pointNumber);
   }
 
-  // Use file:// URL so Remotion reads directly from disk — avoids HTTP proxy timeout
-  const videoFilePath = path.join(STORAGE_PATH, match.videoPath);
-  const videoSrc = `file://${videoFilePath.replace(/\\/g, '/')}`;
+  // Use localhost:4000 — api:4000 doesn't resolve from within the same container
+  const videoSrc = `http://localhost:4000/storage/${match.videoPath}`;
   const uploadedAt = match.uploadedAt?.toDate?.() ?? new Date();
   const matchDate = uploadedAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
