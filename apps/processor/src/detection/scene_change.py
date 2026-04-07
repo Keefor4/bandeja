@@ -11,16 +11,17 @@ class Segment:
     score: float       # 0-1 confidence this is an active segment
 
 
-def detect_scene_changes(video_path: str, threshold: float = 30.0) -> list[Segment]:
+def detect_scene_changes(video_path: str, threshold: float = 30.0, sample_every_n: int = 15) -> list[Segment]:
     """
     Detect scene changes by analyzing frame-to-frame difference.
+    Samples every N frames (default: every 15 frames = ~0.5s at 30fps).
     Returns candidate segments (gaps between major changes = dead time).
     """
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         raise ValueError(f"Cannot open video: {video_path}")
 
-    fps = cap.get(cv2.CAP_PROP_FPS)
+    fps = cap.get(cv2.CAP_PROP_FPS) or 25.0
     segments: list[Segment] = []
     prev_frame = None
     change_times: list[float] = [0.0]
@@ -31,15 +32,17 @@ def detect_scene_changes(video_path: str, threshold: float = 30.0) -> list[Segme
         if not ret:
             break
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        if prev_frame is not None:
-            diff = cv2.absdiff(prev_frame, gray)
-            mean_diff = float(np.mean(diff))
-            if mean_diff > threshold:
-                timestamp = frame_idx / fps
-                change_times.append(timestamp)
+        if frame_idx % sample_every_n == 0:
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            gray = cv2.resize(gray, (320, 180))  # downsample for speed
+            if prev_frame is not None:
+                diff = cv2.absdiff(prev_frame, gray)
+                mean_diff = float(np.mean(diff))
+                if mean_diff > threshold:
+                    timestamp = frame_idx / fps
+                    change_times.append(timestamp)
+            prev_frame = gray
 
-        prev_frame = gray
         frame_idx += 1
 
     total_duration = frame_idx / fps
