@@ -18,7 +18,6 @@ interface TagDraft {
   winnerAuto: boolean;
   shotType: ShotType | null;
   howWon: HowWon | null;
-  rallyLength: number;
 }
 
 function formatTime(s: number) {
@@ -79,6 +78,7 @@ function TagPanel({
   onDraftChange,
   onSave,
   saving,
+  shotCounts,
 }: {
   point: DetectedPoint & { id: string };
   players: MatchPlayers | null;
@@ -86,6 +86,7 @@ function TagPanel({
   onDraftChange: (d: Partial<TagDraft>) => void;
   onSave: () => void;
   saving: boolean;
+  shotCounts: Record<string, Record<string, number>>;
 }) {
   const wd = point.winnerDetection;
   const needsManualWinner = !wd || wd.needsReview || wd.winner === null;
@@ -93,12 +94,15 @@ function TagPanel({
 
   const team1Label = players
     ? `${players.team1.player1} / ${players.team1.player2}`
-    : 'Team 1';
+    : 'Player 1 / Player 2';
   const team2Label = players
     ? `${players.team2.player1} / ${players.team2.player2}`
-    : 'Team 2';
+    : 'Player 3 / Player 4';
 
   const tagComplete = draft.winner !== null && draft.howWon !== null;
+
+  const winnerLabel = draft.winner === 'team1' ? team1Label : draft.winner === 'team2' ? team2Label : null;
+  const winnerShotCounts = draft.winner ? (shotCounts[draft.winner] ?? {}) : {};
 
   return (
     <div className="flex flex-col h-full overflow-y-auto" style={{ background: 'var(--bg-2)' }}>
@@ -187,42 +191,47 @@ function TagPanel({
         {/* Finishing shot */}
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--text-3)', fontSize: 10 }}>
-            Finishing shot <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
+            {winnerLabel ? `Finishing shot — ${winnerLabel}` : 'Finishing shot'}{' '}
+            <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(optional)</span>
           </p>
           {SHOT_GROUPS.map(group => (
             <div key={group.label} className="mb-3">
               <p className="text-xs mb-1.5" style={{ color: 'var(--text-3)', opacity: 0.6 }}>{group.label}</p>
               <div className="flex flex-wrap gap-1.5">
-                {group.shots.map(shot => (
-                  <button
-                    key={shot}
-                    onClick={() => onDraftChange({ shotType: draft.shotType === shot ? null : shot })}
-                    className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150"
-                    style={{
-                      background: draft.shotType === shot ? 'rgba(184,255,64,0.08)' : 'var(--surface)',
-                      border: draft.shotType === shot ? '1px solid rgba(184,255,64,0.32)' : '1px solid var(--border)',
-                      color: draft.shotType === shot ? 'var(--cyan)' : 'var(--text-2)',
-                    }}
-                  >
-                    {SHOT_LABELS[shot]}
-                  </button>
-                ))}
+                {group.shots.map(shot => {
+                  const count = winnerShotCounts[shot] ?? 0;
+                  return (
+                    <button
+                      key={shot}
+                      onClick={() => onDraftChange({ shotType: draft.shotType === shot ? null : shot })}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 flex items-center gap-1.5"
+                      style={{
+                        background: draft.shotType === shot ? 'rgba(184,255,64,0.08)' : 'var(--surface)',
+                        border: draft.shotType === shot ? '1px solid rgba(184,255,64,0.32)' : '1px solid var(--border)',
+                        color: draft.shotType === shot ? 'var(--cyan)' : 'var(--text-2)',
+                      }}
+                    >
+                      {SHOT_LABELS[shot]}
+                      {count > 0 && (
+                        <span
+                          className="text-xs font-semibold rounded-full px-1.5 py-0 leading-4"
+                          style={{
+                            background: draft.shotType === shot ? 'rgba(184,255,64,0.2)' : 'var(--surface-3)',
+                            color: draft.shotType === shot ? 'var(--cyan)' : 'var(--text-3)',
+                            fontSize: 10,
+                            minWidth: 16,
+                            textAlign: 'center',
+                          }}
+                        >
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Rally length */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--text-3)', fontSize: 10 }}>Rally length</p>
-            <span className="text-xs mono" style={{ color: 'var(--text-2)' }}>{draft.rallyLength} shots</span>
-          </div>
-          <input
-            type="range" min={1} max={30} step={1}
-            value={draft.rallyLength}
-            onChange={e => onDraftChange({ rallyLength: Number(e.target.value) })}
-          />
         </div>
       </div>
 
@@ -324,9 +333,12 @@ export default function PointReview() {
   const [taggingPoint, setTaggingPoint] = useState<(DetectedPoint & { id: string }) | null>(null);
   const [, setPendingCorrected] = useState<{ start: number; end: number } | null>(null);
   const [tagDraft, setTagDraft] = useState<TagDraft>({
-    winner: null, winnerAuto: false, shotType: null, howWon: null, rallyLength: 4,
+    winner: null, winnerAuto: false, shotType: null, howWon: null,
   });
   const [savingTag, setSavingTag] = useState(false);
+
+  // Shot counts per team per shot type
+  const [shotCounts, setShotCounts] = useState<Record<string, Record<string, number>>>({});
 
   // Running score
   const [score, setScore] = useState<Score>({ sets: [], games: [0, 0], points: [0, 0] });
@@ -363,6 +375,11 @@ export default function PointReview() {
     })();
   }, [matchId]);
 
+  // Auto-open player modal if players not set
+  useEffect(() => {
+    if (match && !match.players) setShowPlayerModal(true);
+  }, [match]);
+
   useEffect(() => {
     if (point && !isTagging) {
       setAdjustStart(point.startTime);
@@ -382,7 +399,6 @@ export default function PointReview() {
       winnerAuto: !!(wd && !wd.needsReview && wd.winner),
       shotType: null,
       howWon: null,
-      rallyLength: Math.max(1, Math.round(pt.duration / 1.5)),
     });
   }, []);
 
@@ -446,10 +462,20 @@ export default function PointReview() {
         winnerSource: tagDraft.winnerAuto ? 'ai' : 'manual',
         howWon: tagDraft.howWon,
         ...(tagDraft.shotType && { finishingShot: tagDraft.shotType }),
-        rallyLength: tagDraft.rallyLength,
         taggedBy: profile.uid,
         taggedAt: serverTimestamp(),
       });
+
+      // Update shot counts for the winning team
+      if (tagDraft.shotType) {
+        setShotCounts(prev => ({
+          ...prev,
+          [tagDraft.winner!]: {
+            ...(prev[tagDraft.winner!] ?? {}),
+            [tagDraft.shotType!]: ((prev[tagDraft.winner!]?.[tagDraft.shotType!] ?? 0) + 1),
+          },
+        }));
+      }
 
       setScore(newScore);
       approvedCount.current++;
@@ -458,6 +484,9 @@ export default function PointReview() {
       if (!players && approvedCount.current >= 10) {
         setShowPlayerModal(true);
       }
+
+      // Remove this point from the sidebar list
+      setPoints(prev => prev.filter(p => p.id !== taggingPoint.id));
 
       setTaggingPoint(null);
       setPendingCorrected(null);
@@ -549,18 +578,16 @@ export default function PointReview() {
           )}
         </div>
 
-        {/* Player ID button (admin) */}
-        {profile?.role === 'admin' && (
-          <button
-            onClick={() => setShowPlayerModal(true)}
-            className="text-xs px-3 py-1.5 rounded-lg transition-colors shrink-0"
-            style={{ color: 'var(--text-3)', background: 'var(--surface)', border: '1px solid var(--border)' }}
-            onMouseEnter={e => e.currentTarget.style.color = 'var(--text-1)'}
-            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}
-          >
-            {players ? '✎ Players' : '+ Add players'}
-          </button>
-        )}
+        {/* Player ID button — always visible */}
+        <button
+          onClick={() => setShowPlayerModal(true)}
+          className="text-xs px-3 py-1.5 rounded-lg transition-colors shrink-0"
+          style={{ color: 'var(--text-3)', background: 'var(--surface)', border: '1px solid var(--border)' }}
+          onMouseEnter={e => e.currentTarget.style.color = 'var(--text-1)'}
+          onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}
+        >
+          {players ? '✎ Players' : '+ Add players'}
+        </button>
 
         {/* Progress */}
         <div className="flex items-center gap-3 shrink-0">
@@ -617,48 +644,101 @@ export default function PointReview() {
           ))}
         </aside>
 
-        {/* Video */}
-        <div className="flex-1 bg-black flex items-center justify-center relative overflow-hidden">
-          <VideoPlayer
-            ref={playerRef}
-            src={videoSrc}
-            startTime={playStart}
-            endTime={playEnd}
-            onTimeUpdate={setCurrentTime}
-            autoPlay
-            className="w-full h-full object-contain"
-            style={{ maxHeight: 'calc(100vh - 120px)' }}
-          />
+        {/* Video + Scrubber column */}
+        <div className="flex-1 flex flex-col overflow-hidden">
 
-          {/* Overlay: point info */}
-          <div className="absolute top-3 left-3 flex items-center gap-2">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs"
-              style={{ background: 'rgba(9,9,10,0.88)', backdropFilter: 'blur(8px)', border: '1px solid var(--border)' }}>
-              <span style={{ color: 'var(--text-3)' }}>Point #{point.pointNumber}</span>
-              <span style={{ color: 'var(--border)' }}>·</span>
-              <span className="mono" style={{ color: 'var(--text-2)' }}>{point.duration.toFixed(1)}s</span>
-              <span style={{ color: 'var(--border)' }}>·</span>
-              <ConfidencePill value={point.confidence} />
+          {/* Video */}
+          <div className="flex-1 bg-black flex items-center justify-center relative overflow-hidden">
+            <VideoPlayer
+              ref={playerRef}
+              src={videoSrc}
+              startTime={playStart}
+              endTime={playEnd}
+              onTimeUpdate={setCurrentTime}
+              autoPlay
+              className="w-full h-full object-contain"
+            />
+
+            {/* Overlay: point info */}
+            <div className="absolute top-3 left-3 flex items-center gap-2">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs"
+                style={{ background: 'rgba(9,9,10,0.88)', backdropFilter: 'blur(8px)', border: '1px solid var(--border)' }}>
+                <span style={{ color: 'var(--text-3)' }}>Point #{point.pointNumber}</span>
+                <span style={{ color: 'var(--border)' }}>·</span>
+                <span className="mono" style={{ color: 'var(--text-2)' }}>{point.duration.toFixed(1)}s</span>
+                <span style={{ color: 'var(--border)' }}>·</span>
+                <ConfidencePill value={point.confidence} />
+              </div>
+              {adjustMode && (
+                <div className="px-2.5 py-1.5 rounded-lg text-xs font-medium"
+                  style={{ background: 'var(--cyan-glow)', border: '1px solid rgba(184,255,64,0.4)', color: 'var(--cyan)' }}>
+                  Adjust mode
+                </div>
+              )}
+              {isTagging && (
+                <div className="px-2.5 py-1.5 rounded-lg text-xs font-medium"
+                  style={{ background: 'rgba(0,200,83,0.15)', border: '1px solid rgba(0,200,83,0.4)', color: 'var(--green)' }}>
+                  Tagging
+                </div>
+              )}
             </div>
-            {adjustMode && (
-              <div className="px-2.5 py-1.5 rounded-lg text-xs font-medium"
-                style={{ background: 'var(--cyan-glow)', border: '1px solid rgba(184,255,64,0.4)', color: 'var(--cyan)' }}>
-                Adjust mode
-              </div>
-            )}
-            {isTagging && (
-              <div className="px-2.5 py-1.5 rounded-lg text-xs font-medium"
-                style={{ background: 'rgba(0,200,83,0.15)', border: '1px solid rgba(0,200,83,0.4)', color: 'var(--green)' }}>
-                Tagging
-              </div>
-            )}
+
+            {/* Overlay: play/pause center click */}
+            <div
+              className="absolute inset-0 cursor-pointer"
+              onClick={() => { playerRef.current?.togglePlay(); setIsPlaying(v => !v); }}
+            />
           </div>
 
-          {/* Overlay: play/pause center click */}
-          <div
-            className="absolute inset-0 cursor-pointer"
-            onClick={() => { playerRef.current?.togglePlay(); setIsPlaying(v => !v); }}
-          />
+          {/* ── Scrubber ─────────────────────────────────── */}
+          <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-t"
+            style={{ background: 'var(--bg-2)', borderColor: 'var(--border)' }}>
+
+            <button
+              onClick={() => { playerRef.current?.togglePlay(); setIsPlaying(v => !v); }}
+              className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md transition-colors"
+              style={{ color: 'var(--text-2)', background: 'var(--surface)' }}
+              onMouseEnter={e => e.currentTarget.style.color = 'var(--cyan)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-2)'}
+            >
+              {isPlaying
+                ? <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor"><rect x="0" y="0" width="3.5" height="12"/><rect x="6.5" y="0" width="3.5" height="12"/></svg>
+                : <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor"><polygon points="0,0 10,6 0,12"/></svg>
+              }
+            </button>
+
+            <span className="mono text-xs shrink-0 w-16 text-right" style={{ color: 'var(--text-3)' }}>
+              {formatTime(currentTime)}
+            </span>
+
+            <div className="flex-1">
+              <input
+                type="range"
+                min={playStart} max={playEnd} step={0.1}
+                value={Math.min(currentTime, playEnd)}
+                onChange={e => playerRef.current?.seekTo(Number(e.target.value))}
+              />
+            </div>
+
+            <span className="mono text-xs shrink-0 w-16" style={{ color: 'var(--text-3)' }}>
+              {formatTime(playEnd)}
+            </span>
+
+            {/* Seek buttons */}
+            <div className="flex items-center gap-1 shrink-0">
+              {[-5, -1, 1, 5].map(s => (
+                <button key={s} onClick={() => playerRef.current?.seek(s)}
+                  className="text-xs px-2 py-1 rounded mono transition-colors"
+                  style={{ color: 'var(--text-3)', background: 'var(--surface)' }}
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--text-1)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}
+                >
+                  {s > 0 ? `+${s}s` : `${s}s`}
+                </button>
+              ))}
+            </div>
+          </div>
+
         </div>
 
         {/* Right panel */}
@@ -673,6 +753,7 @@ export default function PointReview() {
               onDraftChange={d => setTagDraft(prev => ({ ...prev, ...d }))}
               onSave={saveTag}
               saving={savingTag}
+              shotCounts={shotCounts}
             />
           ) : (
             <>
@@ -751,7 +832,7 @@ export default function PointReview() {
                       </div>
                       <input type="range" min={adjustStart + 1} max={ctxEnd} step={0.1}
                         value={adjustEnd}
-                        onChange={e => setAdjustEnd(Number(e.target.value))}
+                        onChange={e => { setAdjustEnd(Number(e.target.value)); playerRef.current?.seekTo(Number(e.target.value)); }}
                       />
                     </div>
                     <button
@@ -780,55 +861,6 @@ export default function PointReview() {
             </>
           )}
         </aside>
-      </div>
-
-      {/* ── Scrubber ─────────────────────────────────── */}
-      <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-t"
-        style={{ background: 'var(--bg-2)', borderColor: 'var(--border)' }}>
-
-        <button
-          onClick={() => { playerRef.current?.togglePlay(); setIsPlaying(v => !v); }}
-          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md transition-colors"
-          style={{ color: 'var(--text-2)', background: 'var(--surface)' }}
-          onMouseEnter={e => e.currentTarget.style.color = 'var(--cyan)'}
-          onMouseLeave={e => e.currentTarget.style.color = 'var(--text-2)'}
-        >
-          {isPlaying
-            ? <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor"><rect x="0" y="0" width="3.5" height="12"/><rect x="6.5" y="0" width="3.5" height="12"/></svg>
-            : <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor"><polygon points="0,0 10,6 0,12"/></svg>
-          }
-        </button>
-
-        <span className="mono text-xs shrink-0 w-16 text-right" style={{ color: 'var(--text-3)' }}>
-          {formatTime(currentTime)}
-        </span>
-
-        <div className="flex-1">
-          <input
-            type="range"
-            min={playStart} max={playEnd} step={0.1}
-            value={Math.min(currentTime, playEnd)}
-            onChange={e => playerRef.current?.seekTo(Number(e.target.value))}
-          />
-        </div>
-
-        <span className="mono text-xs shrink-0 w-16" style={{ color: 'var(--text-3)' }}>
-          {formatTime(playEnd)}
-        </span>
-
-        {/* Seek buttons */}
-        <div className="flex items-center gap-1 shrink-0">
-          {[-5, -1, 1, 5].map(s => (
-            <button key={s} onClick={() => playerRef.current?.seek(s)}
-              className="text-xs px-2 py-1 rounded mono transition-colors"
-              style={{ color: 'var(--text-3)', background: 'var(--surface)' }}
-              onMouseEnter={e => e.currentTarget.style.color = 'var(--text-1)'}
-              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}
-            >
-              {s > 0 ? `+${s}s` : `${s}s`}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* ── Player identification modal ──────────────── */}
