@@ -1,6 +1,5 @@
-"""Stage 1: Scene change detection using FFmpeg keyframe extraction."""
+"""Stage 1: Scene change detection using fixed time segments."""
 import subprocess
-import re
 import json
 from dataclasses import dataclass
 
@@ -12,17 +11,14 @@ class Segment:
     score: float       # 0-1 confidence this is an active segment
 
 
-def detect_scene_changes(video_path: str, threshold: float = 0.3) -> list[Segment]:
+def detect_scene_changes(video_path: str, threshold: float = 0.3, segment_size: float = 60.0) -> list[Segment]:
     """
-    Detect scene changes using FFmpeg to extract keyframe timestamps.
-    Keyframes only — extremely fast regardless of video length.
+    Split video into fixed-size segments for downstream analysis.
+    Fast and reliable for any video length.
     """
-    print(f"  Extracting keyframe timestamps via FFmpeg...")
-
-    # Get total duration
+    # Get duration via ffprobe (fast — reads metadata only)
     probe = subprocess.run(
-        ["ffprobe", "-v", "quiet", "-print_format", "json",
-         "-show_format", "-show_streams", video_path],
+        ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", video_path],
         capture_output=True, text=True, timeout=30,
     )
     total_duration = 3600.0
@@ -31,54 +27,15 @@ def detect_scene_changes(video_path: str, threshold: float = 0.3) -> list[Segmen
         total_duration = float(info.get("format", {}).get("duration", 3600))
     except Exception:
         pass
-    print(f"  Duration: {total_duration:.0f}s")
 
-    # Extract keyframe timestamps only (fast — no decoding)
-    result = subprocess.run(
-        [
-            "ffprobe", "-v", "quiet",
-            "-select_streams", "v",
-            "-skip_frame", "nokey",
-            "-show_entries", "frame=pkt_pts_time",
-            "-print_format", "csv=p=0",
-            video_path,
-        ],
-        capture_output=True, text=True, timeout=120,
-    )
-
-    change_times: list[float] = [0.0]
-    prev_t = 0.0
-    min_gap = 3.0  # ignore keyframes less than 3s apart
-
-    for line in result.stdout.strip().splitlines():
-        line = line.strip()
-        if not line or line == 'N/A':
-            continue
-        try:
-            t = float(line)
-            if t - prev_t >= min_gap:
-                change_times.append(t)
-                prev_t = t
-        except ValueError:
-            continue
-
-    # Fallback: if no keyframes found, split into 60s segments
-    if len(change_times) <= 1:
-        print("  No keyframes found — falling back to 60s fixed segments")
-        t = 60.0
-        while t < total_duration:
-            change_times.append(t)
-            t += 60.0
-
-    change_times.append(total_duration)
-    print(f"  Found {len(change_times) - 2} scene boundaries")
+    print(f"  Duration: {total_duration:.0f}s, splitting into {segment_size:.0f}s segments")
 
     segments = []
-    for i in range(len(change_times) - 1):
-        start = change_times[i]
-        end = change_times[i + 1]
-        duration = end - start
-        score = min(1.0, duration / 30.0)
-        segments.append(Segment(start_time=start, end_time=end, score=score))
+    t = 0.0
+    while t < total_duration:
+        end = min(t + segment_size, total_duration)
+        segments.append(Segment(start_time=t, end_time=end, score=0.5))
+        t += segment_size
 
+    print(f"  Created {len(segments)} segments")
     return segments
