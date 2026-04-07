@@ -230,7 +230,7 @@ export default function Dashboard() {
   useEffect(() => {
     const q = query(
       collection(db, 'matches'),
-      where('status', 'in', ['uploaded', 'processing', 'detected', 'reviewing', 'rendering', 'complete']),
+      where('status', 'in', ['uploaded', 'processing', 'detected', 'reviewing', 'rendering', 'complete', 'error']),
       orderBy('createdAt', 'desc')
     );
     return onSnapshot(q, snap => {
